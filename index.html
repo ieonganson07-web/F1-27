@@ -222,8 +222,6 @@
                   box-shadow:0 0 12px rgba(255,210,63,.5); }
   #levelBtn { display:none; }
   body.touch.tilt #levelBtn { display:block; }
-  #steerRow { display:none; }
-  body.touch #steerRow { display:flex; }
   #rotate { position:fixed; inset:0; z-index:20; display:none; place-items:center; text-align:center; padding:30px;
             background:#0b0d10; color:#e9edf2; font-size:16px; font-weight:700; letter-spacing:1px; line-height:1.6; }
   body.touch #rotate.show { display:grid; }
@@ -279,7 +277,6 @@
   <div class="row"><span class="lbl">LAPS</span><span class="opts" id="lapOpts"></span></div>
   <div class="row"><span class="lbl">START</span><button class="btn" id="gridDown">◀</button><span class="val" id="gridVal">P10</span><button class="btn" id="gridUp">▶</button></div>
   <div class="row"><span class="lbl">RIVALS</span><span class="opts" id="aiOpts"></span></div>
-  <div class="row" id="steerRow"><span class="lbl">STEERING</span><span class="opts" id="steerOpts"></span></div>
   <button class="btn" id="goBtn">START RACE</button>
 </div>
 <button class="btn hidden" id="restartBtn">RESTART</button>
@@ -307,7 +304,7 @@
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1>Apex GP — Monaco</h1>
-  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 4 · tilt steering</b></p>
+  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 5 · tilt steering</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -317,7 +314,7 @@
     <tr><td class="key"><kbd>C</kbd></td><td>Camera: chase / cockpit / TV</td></tr>
     <tr><td class="key"><kbd>T</kbd></td><td>Tyres for the next stop — worn ones cost grip and lap time</td></tr>
     <tr><td class="key">Pit lane</td><td>In on the right after Rascasse, 80 km/h — stop in the red box</td></tr>
-    <tr><td class="key">On a phone</td><td>On-screen pad: steer with the left thumb, gas &amp; brake with the right</td></tr>
+    <tr><td class="key">On a phone</td><td>Roll the device to steer · gas &amp; brake under your right thumb · LEVEL re-centres</td></tr>
     <tr><td class="key">On the grid</td><td>Click your laps, grid slot and rivals — or <kbd>L</kbd> <kbd>G</kbd> <kbd>K</kbd></td></tr>
     <tr><td class="key"><kbd>Enter</kbd></td><td>Restart the race — or click RESTART</td></tr>
     <tr><td class="key"><kbd>R</kbd></td><td>Reset to track</td></tr>
@@ -513,6 +510,8 @@ const app = document.getElementById('app');
 const MOBILE = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 // Touch state lives up here because the race setup UI reads the steering mode
 // while building its buttons, long before the touch handlers are wired up.
+// On a touch device tilt is the steering; the pad is only a fallback for
+// hardware with no gyroscope, or if motion access is refused.
 const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0, mode: 'pad' };
 const renderer = new THREE.WebGLRenderer({ antialias: !MOBILE, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
@@ -3174,27 +3173,23 @@ function adaptPace(playerLap) {
 }
 /* --- the setup panel on the grid: click your laps, slot and rivals ---------- */
 const setupEl = document.getElementById('setup'), lapOptsEl = document.getElementById('lapOpts');
-const steerOptsEl = document.getElementById('steerOpts');
 const aiOptsEl = document.getElementById('aiOpts'), gridValEl = document.getElementById('gridVal');
 const restartBtn = document.getElementById('restartBtn');
 function reGrid() { setupRace(); RACE.armed = false; updateSetupUI(); }   // change something: line up again, wait
 function updateSetupUI() {
   for (const b of lapOptsEl.children) b.classList.toggle('on', +b.dataset.laps === RACE.laps);
   for (const b of aiOptsEl.children) b.classList.toggle('on', +b.dataset.ai === RACE.level);
-  for (const b of steerOptsEl.children) b.classList.toggle('on', b.dataset.steer === TOUCH.mode);
   gridValEl.textContent = 'P' + (RACE.grid + 1);
 }
 {
   const click = (el, fn) => el.addEventListener('click', e => { fn(e); e.currentTarget.blur(); });
   lapOptsEl.innerHTML = RACE_LAP_CHOICES.map(n => `<button class="btn" data-laps="${n}">${n}</button>`).join('');
   aiOptsEl.innerHTML = AI_LEVELS.map((l, k) => `<button class="btn" data-ai="${k}">${l.name}</button>`).join('');
-  steerOptsEl.innerHTML = '<button class="btn" data-steer="pad">PAD</button><button class="btn" data-steer="tilt">TILT</button>';
-  click(steerOptsEl, e => { const b = e.target.closest('button'); if (b) { setSteerMode(b.dataset.steer); b.blur(); } });
   click(lapOptsEl, e => { const b = e.target.closest('button'); if (b) { RACE.laps = +b.dataset.laps; reGrid(); b.blur(); } });
   click(aiOptsEl, e => { const b = e.target.closest('button'); if (b) { RACE.level = +b.dataset.ai; reGrid(); b.blur(); } });
   click(document.getElementById('gridDown'), () => { RACE.grid = (RACE.grid + RACE_CARS - 1) % RACE_CARS; reGrid(); });
   click(document.getElementById('gridUp'), () => { RACE.grid = (RACE.grid + 1) % RACE_CARS; reGrid(); });
-  click(document.getElementById('goBtn'), () => { RACE.armed = true; });
+  click(document.getElementById('goBtn'), () => { if (window.ensureTilt) ensureTilt(); RACE.armed = true; });
   click(restartBtn, () => { reGrid(); });
   click(resultsEl, e => { if (e.target.closest('#againBtn')) { setupRace(); RACE.armed = true; updateSetupUI(); } });
   const helpCardEl = document.getElementById('help');
@@ -3618,12 +3613,17 @@ function readInput() {
 }
 
 /* ---------------------------------------------------------- touch controls --
-   On a phone or tablet: analog steering under the left thumb, throttle and
-   brake under the right, and the keys that have no equivalent as buttons.
+   On a phone or tablet: steer by rolling the device, throttle and brake under
+   the right thumb, and the keys that have no equivalent as buttons.
    The keyboard keeps working, so a tablet with one attached loses nothing. */
 {
   const forced = /[?&]touch=(1|on)/.test(location.search);
-  if (forced || MOBILE) document.body.classList.add('touch');
+  const isTouch = forced || MOBILE;
+  if (isTouch) {
+    document.body.classList.add('touch');
+    TOUCH.mode = 'tilt';                       // tilt from the off; the pad stays hidden
+    document.body.classList.add('tilt');
+  }
 
   const pad = document.getElementById('steerPad'), knob = document.getElementById('steerKnob');
   const rotate = document.getElementById('rotate');
@@ -3728,15 +3728,23 @@ function readInput() {
     } else {
       removeEventListener('deviceorientation', onTilt);
       TOUCH.axisOn = false; TOUCH.axis = 0;
+      if (isTouch) raceFlash('STEERING PAD — NO TILT AVAILABLE');
     }
     TOUCH.mode = mode;
     document.body.classList.toggle('tilt', mode === 'tilt');
-    try { localStorage.setItem('apexSteer', mode); } catch (err) {}
     updateSetupUI();
   };
   window.levelTilt = () => { tiltZero = null; };
   tap('levelBtn', () => { levelTilt(); raceFlash('LEVELLED'); });   // re-zero wherever you hold it
-  try { if (localStorage.getItem('apexSteer') === 'tilt') setSteerMode('tilt', true); } catch (err) {}
+  // iOS only grants motion access during a gesture, so ask on the first touch
+  // and when the race is started. Until then the car simply runs straight.
+  let tiltAsked = false;
+  window.ensureTilt = () => {
+    if (tiltAsked || !isTouch || TOUCH.mode !== 'tilt' || tiltSeen) return;
+    tiltAsked = true;
+    setSteerMode('tilt');
+  };
+  addEventListener('pointerdown', () => ensureTilt(), { passive: true });
 
   const checkRotate = () => rotate.classList.toggle('show', innerHeight > innerWidth);
   addEventListener('resize', checkRotate);
