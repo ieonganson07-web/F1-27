@@ -309,7 +309,7 @@
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1>Apex GP — Monaco</h1>
-  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 8 · tilt retry</b></p>
+  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 9 · expert AI</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -2833,11 +2833,6 @@ function buildCar() {
     const duct = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.26, 0.045), MAT.carbon);
     duct.position.set(-0.02, 0, -side * (halfW * 0.52));
     duct.castShadow = true; pivot.add(duct);
-    if (front) {
-      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.025, halfW * 1.5), MAT.white);
-      fin.position.set(0.02, R + 0.035, 0);
-      fin.castShadow = true; pivot.add(fin);
-    }
 
     car.add(pivot);
     wheels.push(spin);
@@ -2944,17 +2939,16 @@ resetCar(0);
    ========================================================================== */
 const RACE_CARS = 20;
 const RACE_LAP_CHOICES = [3, 5, 10, 20];
-const AI_LEVELS = [            // a clean lap on their own: ~110 s, ~100 s, ~92 s
+const AI_LEVELS = [            // a clean lap on their own: ~110 s, ~100 s, ~92 s, ~85 s
   // mistake: chance per braking zone of running wide; attack: chance per second of
   // going for a pass when close behind a slower car on a clear straight
   { name: 'EASY',   grip: 0.47, power: 0.90, mistake: 0.060, attack: 0.25 },
   { name: 'MEDIUM', grip: 0.58, power: 0.95, mistake: 0.035, attack: 0.45 },
   { name: 'HARD',   grip: 0.72, power: 1.00, mistake: 0.020, attack: 0.70 },
-  // tunes itself to your lap times each lap, so the racing stays close
-  // starts cautious until it has seen a lap of yours, then tracks your pace
-  { name: 'ADAPTIVE', grip: 0.50, power: 0.93, mistake: 0.035, attack: 0.50, adapt: true },
+  // they barely make a mistake and attack at every opening
+  { name: 'EXPERT', grip: 0.84, power: 1.00, mistake: 0.006, attack: 0.90 },
 ];
-const RACE = { laps: 5, grid: 9, level: 3, playerPace: 0, phase: 'grid', t: 0, armed: false, lights: 0, hold: 0,
+const RACE = { laps: 5, grid: 9, level: 2, phase: 'grid', t: 0, armed: false, lights: 0, hold: 0,
                clock: 0, leaderDone: false, results: [], flashText: '', flashUntil: 0 };
 // Ten teams, two cars each; the player drives for the first.
 const TEAMS = [
@@ -3151,16 +3145,6 @@ function setupRace() {
     r.gripF = lvl.grip * (1 + (Math.random() - 0.5) * 0.07);
     r.powerF = lvl.power * (1 + (Math.random() - 0.5) * 0.03);
     r.prof = speedProfile(r.gripF, r.powerF);
-    // Adaptive: line the field up at the pace you were running, rather than
-    // letting them romp away for two laps before they learn it.
-    if (lvl.adapt && RACE.playerPace) {
-      const want = RACE.playerPace * (0.985 + (r.k % 7) * 0.006);
-      for (let k = 0; k < 3; k++) {
-        const g = Math.max(0.35, Math.min(0.85, r.gripF * Math.pow(lapTimeFor(r.prof) / want, 1.6)));
-        if (Math.abs(g - r.gripF) < 0.004) break;
-        r.gripF = g; r.prof = speedProfile(r.gripF, r.powerF);
-      }
-    }
   }
   // Qualifying order is not race pace: line them up in a random order, so the
   // quicker cars have to work their way forward and there is a race to watch.
@@ -3191,23 +3175,6 @@ function setupRace() {
   resultsEl.classList.add('hidden');
   towerEl.innerHTML = CARS.map(() => '<div class="tr"><b></b><i></i><span></span><em></em></div>').join('');
   camSnap = true;
-}
-// what a speed profile is worth over a lap
-const lapTimeFor = prof => {
-  let t = 0;
-  for (let i = 0; i < SAMPLES; i++) t += RL.ds[i] / Math.max(1, (prof[i] + prof[(i + 1) % SAMPLES]) / 2);
-  return t;
-};
-// Adaptive AI: after each of your laps, nudge the field's grip toward your own
-// pace — spread a little either side of it — so the racing stays close whatever
-// speed you run. Kept inside the range the fixed levels cover.
-function adaptPace(playerLap) {
-  if (!(playerLap > 45 && playerLap < 400)) return;
-  for (const r of RIVALS) {
-    const own = lapTimeFor(r.prof), want = playerLap * (0.985 + (r.k % 7) * 0.006);
-    const g = Math.max(0.35, Math.min(0.85, r.gripF * Math.pow(own / want, 1.6)));
-    if (Math.abs(g - r.gripF) > 0.004) { r.gripF = g; r.prof = speedProfile(r.gripF, r.powerF); }
-  }
 }
 /* --- the setup panel on the grid: click your laps, slot and rivals ---------- */
 const setupEl = document.getElementById('setup'), lapOptsEl = document.getElementById('lapOpts');
@@ -3522,15 +3489,7 @@ function classify() {
     while (c.cp < cp) { c.cp++; if (c.cp >= 0) c.cpTimes[c.cp] = RACE.clock; }
     const lapsDone = Math.floor(c.prog / L);
     if (lapsDone <= c.lapsDone) continue;
-    if (c.lapsDone >= 0) {
-      if (c.isPlayer) {
-        const lapTime = RACE.clock - c.lapStart;
-        // remember your pace whatever the level, so switching to ADAPTIVE starts calibrated
-        if (lapTime > 45 && lapTime < 400) RACE.playerPace = RACE.playerPace ? RACE.playerPace * 0.6 + lapTime * 0.4 : lapTime;
-        if (AI_LEVELS[RACE.level].adapt) adaptPace(lapTime);
-      }
-      c.lapStart = RACE.clock;                                  // lap 1 is timed from the lights
-    }
+    if (c.lapsDone >= 0) c.lapStart = RACE.clock;               // lap 1 is timed from the lights
     c.lapsDone = lapsDone;
     if (!c.done && (lapsDone >= RACE.laps || (RACE.leaderDone && lapsDone >= 1))) {
       c.done = true; c.finishT = RACE.clock; c.finishLaps = lapsDone; RACE.results.push(c);
@@ -3578,7 +3537,7 @@ function updateRaceHUD() {
     lightsEl.children[k].classList.toggle('lit', RACE.lights > k);
     START_LAMPS[k].color.setHex(RACE.lights > k ? 0xff1a1a : 0x2a0606);
   }
-  setupEl.classList.toggle('hidden', !gridded);          // pick your race while the grid forms up
+  setupEl.classList.toggle('hidden', RACE.phase !== 'grid' || RACE.armed);   // gone the moment you start
   restartBtn.classList.toggle('hidden', gridded);
   let msg = '';
   if (RACE.phase === 'grid' && RACE.armed) msg = 'LIGHTS COMING';
