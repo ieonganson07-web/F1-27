@@ -309,7 +309,7 @@
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1>Apex GP — Monaco</h1>
-  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 9 · expert AI</b></p>
+  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 13 · open run-off + cut penalty</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -719,12 +719,15 @@ const lapD = i => i / SAMPLES * LAP_LENGTH;
 const smooth01 = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
 const inLapRange = (d, a, b) => a <= b ? d >= a && d <= b : d >= a || d <= b;   // wraps past the line
 // Nouvelle Chicane escape road: straight on, outside the left flick (car's right).
-const ESCAPE = { from: 2030, full: 2058, to: 2096, width: 13 };
+// It is an open bypass, as at the real corner: miss your braking, run straight
+// on across the painted tarmac, and it funnels you back onto the track. Nothing
+// across the end of it to hit, so `close` is long and gradual.
+const ESCAPE = { from: 2030, full: 2056, to: 2136, close: 52, width: 13 };
 function escapeWidth(i) {
   const d = lapD(i);
   if (d < ESCAPE.from || d > ESCAPE.to) return 0;
   return ESCAPE.width * Math.min(smooth01((d - ESCAPE.from) / (ESCAPE.full - ESCAPE.from)),
-                                 smooth01((ESCAPE.to - d) / 14));
+                                 smooth01((ESCAPE.to - d) / ESCAPE.close));
 }
 for (let i = 0; i < SAMPLES; i++) {
   const ew = escapeWidth(i);
@@ -1819,23 +1822,6 @@ function buildCrowd() {
 
 /* ------------------------------------------------- Nouvelle Chicane run-off -- */
 {
-  const blocks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.9, 0.86, 1.0),
-    new THREE.MeshLambertMaterial({ color: 0xd9621e }), 120);
-  let k = 0;
-  for (let d = ESCAPE.full; d <= ESCAPE.to && k < 118; d += 1.1) {
-    const i = distSample(d), n = path[i], o = wallAt(i, 1) + 0.95;
-    for (let h = 0; h < 2; h++)
-      blocks.setMatrixAt(k++, M4(n.pos.x + n.nrm.x * o, n.pos.y + 0.43 + h * 0.86, n.pos.z + n.nrm.z * o,
-                                 0, -Math.atan2(n.tan.z, n.tan.x), 0));
-  }
-  blocks.count = k; scene.add(blocks);
-  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
-  const g = c.getContext('2d');
-  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 128); g.fillStyle = '#d0263a';
-  for (let x = -40; x < 256; x += 64) {
-    g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 32, 0); g.lineTo(x + 64, 64);
-    g.lineTo(x + 32, 128); g.lineTo(x, 128); g.lineTo(x + 32, 64); g.closePath(); g.fill();
-  }
   // Painted run-off: hatching across the escape road and a cross at the end,
   // as on the real thing, so the tarmac straight on reads as somewhere you
   // have already made a mistake.
@@ -1848,13 +1834,13 @@ function buildCrowd() {
       m.position.set(sn.pos.x + sn.nrm.x * lateral, sn.pos.y + (y || 0.038), sn.pos.z + sn.nrm.z * lateral);
       scene.add(m);
     };
-    for (let d = ESCAPE.full - 4; d < ESCAPE.to - 14; d += 3.4) {          // diagonal hatching
+    for (let d = 2052; d < 2094; d += 3.4) {                              // diagonal hatching
       const si = distSample(d), inner = halfW[si] + 0.5, outer = wallAt(si, 1) - 0.7;
       if (outer - inner < 2.5) continue;
       lay(d, (inner + outer) / 2, (outer - inner) * 1.35, 0.55, Math.PI / 4, 0xeceff1);
     }
     {                                                                       // the cross, straight ahead
-      const d = ESCAPE.to - 11, si = distSample(d);
+      const d = 2098, si = distSample(d);
       const inner = halfW[si] + 0.8, outer = wallAt(si, 1) - 0.9, mid = (inner + outer) / 2;
       const arm = Math.max(3, (outer - inner) * 0.8);
       if (outer - inner > 3) {
@@ -1863,12 +1849,6 @@ function buildCrowd() {
       }
     }
   }
-  const i = distSample(ESCAPE.to - 6), n = path[i], o = wallAt(i, 1) + 3.6;   // beside the run-off, facing braking cars
-  const board = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.6),
-    new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(c), side: THREE.DoubleSide }));
-  board.position.set(n.pos.x + n.nrm.x * o, n.pos.y + 1.7, n.pos.z + n.nrm.z * o);
-  board.rotation.y = Math.atan2(-n.tan.x, -n.tan.z);
-  scene.add(board);
 }
 
 /* ------------------------------------------------------------- pit lane -- */
@@ -2949,7 +2929,7 @@ const AI_LEVELS = [            // a clean lap on their own: ~110 s, ~100 s, ~92 
   { name: 'EXPERT', grip: 0.84, power: 1.00, mistake: 0.006, attack: 0.90 },
 ];
 const RACE = { laps: 5, grid: 9, level: 2, phase: 'grid', t: 0, armed: false, lights: 0, hold: 0,
-               clock: 0, leaderDone: false, results: [], flashText: '', flashUntil: 0 };
+               clock: 0, leaderDone: false, results: [], flashText: '', flashUntil: 0, pen: 0 };
 // Ten teams, two cars each; the player drives for the first.
 const TEAMS = [
   { paint: 0xc8102e, white: 0xf4f4f6, accent: 0xffd23f },
@@ -3172,6 +3152,7 @@ function setupRace() {
                               lapsDone: -1, lapStart: 0, cp: -1e9, cpTimes: [], out: false });
   S.wear = 0;
   T_.laps = 0; T_.armed = false; T_.best = null; T_.last = null; T_.lapStart = T_.now; T_.prevS = s0;
+  T_.cutting = false; T_.cutLap = false; RACE.pen = 0;
   resultsEl.classList.add('hidden');
   towerEl.innerHTML = CARS.map(() => '<div class="tr"><b></b><i></i><span></span><em></em></div>').join('');
   camSnap = true;
@@ -3492,7 +3473,8 @@ function classify() {
     if (c.lapsDone >= 0) c.lapStart = RACE.clock;               // lap 1 is timed from the lights
     c.lapsDone = lapsDone;
     if (!c.done && (lapsDone >= RACE.laps || (RACE.leaderDone && lapsDone >= 1))) {
-      c.done = true; c.finishT = RACE.clock; c.finishLaps = lapsDone; RACE.results.push(c);
+      c.done = true; c.finishT = RACE.clock + (c.isPlayer ? RACE.pen : 0); c.finishLaps = lapsDone;
+      RACE.results.push(c);
       if (!RACE.leaderDone) { RACE.leaderDone = true; raceFlash('CHEQUERED FLAG'); }
       if (c.isPlayer) {
         RACE.phase = 'done';
@@ -3531,7 +3513,8 @@ function updateRaceHUD() {
   racePosEl.textContent = 'P' + (order.indexOf(PLAYER_CAR) + 1);
   raceCountEl.textContent = '/' + CARS.length;
   raceLapEl.textContent = gridded ? 'GRID' : PLAYER_CAR.done ? 'FINISHED'
-    : 'LAP ' + Math.max(1, Math.min(RACE.laps, PLAYER_CAR.lapsDone + 1)) + '/' + RACE.laps;
+    : 'LAP ' + Math.max(1, Math.min(RACE.laps, PLAYER_CAR.lapsDone + 1)) + '/' + RACE.laps +
+      (RACE.pen ? '  +' + RACE.pen + 's' : '');
   lightsEl.classList.toggle('on', gridded || (RACE.phase === 'racing' && RACE.clock < 1.2));
   for (let k = 0; k < 5; k++) {
     lightsEl.children[k].classList.toggle('lit', RACE.lights > k);
@@ -3995,7 +3978,12 @@ function step(dt) {
     const limit = wallAt(post.i, post.lateral) - 0.9;
     if (Math.abs(post.lateral) > limit && !(post.lateral > 0 && mainRightOpen(post.i))) {
       const dir = Math.sign(post.lateral);
-      const over = Math.abs(post.lateral) - limit;
+      // Rate-limited: where the circuit folds back on itself — the chicane, with
+      // its wide run-off — the nearest centreline sample can be the one across
+      // the corner, and correcting to it in one step used to fling the car
+      // several metres. Nudging it back over a few steps contains it just as
+      // well at 120 Hz, without ever teleporting it.
+      const over = Math.min(Math.abs(post.lateral) - limit, 0.7);
       S.x -= post.nrm.x * dir * over;
       S.z -= post.nrm.z * dir * over;
       const outward = S.vx * post.nrm.x * dir + S.vz * post.nrm.z * dir;
@@ -4003,7 +3991,18 @@ function step(dt) {
         S.vx -= post.nrm.x * dir * outward;
         S.vz -= post.nrm.z * dir * outward;
       }
-      wallScrub(Math.max(0, outward), dt);
+      // Inside the escape road the edge is a funnel, not a barrier: the
+      // outward speed has already been taken off, so rather than an impact
+      // the car keeps sliding along the painted edge, loses time, and is
+      // steered back onto the track — which is what running straight on at
+      // the real chicane does to you.
+      if (dir > 0 && escapeWidth(post.i) > 0.5) {
+        const keep = 1 - 0.5 * dt;
+        S.vx *= keep; S.vz *= keep;
+        S.yawRate *= 0.9;
+      } else {
+        wallScrub(Math.max(0, outward), dt);
+      }
       alignToWall(post.tan, post.nrm.x * dir, post.nrm.z * dir);
       S.slip = 1;
     }
@@ -4049,6 +4048,7 @@ function step(dt) {
   }
 
   if (wasOn !== S.onTrack) warnEl.classList.toggle('on', !S.onTrack);
+  cutCheck(loc);
 
   updateTiming(post || path[S.seg]);
 }
@@ -4071,6 +4071,26 @@ function fmt(ms) {
   return m + ':' + String(s).padStart(2, '0') + '.' + String(f).padStart(3, '0');
 }
 
+// Running straight on at the chicane costs you nothing in metal — the escape
+// road is open, with nothing across it to hit — so it costs you what the
+// stewards would charge instead: this lap's time is thrown away and five
+// seconds go onto your race. Without that the fastest way round Monaco would
+// be to ignore the corner altogether.
+const CUT_PENALTY = 5;                 // seconds, as the regulations have it
+function cutCheck(loc) {
+  if (!loc) return;                    // in the pit lane, nowhere near the chicane
+  const d = lapD(loc.i), ew = escapeWidth(loc.i), off = loc.lateral - halfW[loc.i];
+  // Deep in the escape road, not merely a wheel over the kerb — running wide at
+  // the chicane and gathering it up again is racing, and costs nothing.
+  if (ew > 6 && off > 6) { T_.cutting = true; return; }
+  if (!T_.cutting) return;
+  if (ew > 8 && off < 1.5) T_.cutting = false;           // came back before the exit: corner taken
+  else if (d > 2145 && d < 2500) {                       // rejoined past the corner: that was a cut
+    T_.cutting = false; T_.cutLap = true;
+    if (RACE.phase === 'racing') { RACE.pen += CUT_PENALTY; raceFlash('CHICANE CUT  +' + CUT_PENALTY + 's'); }
+  } else if (d < 2010 || d > 2500) T_.cutting = false;   // nowhere near it any more
+}
+
 function updateTiming(loc) {
   const s = loc.s;
   // crossing the line: progress wraps from near-full to near-zero, going forwards
@@ -4079,7 +4099,7 @@ function updateTiming(loc) {
     const lap = T_.now - T_.lapStart;
     // Belt and braces: the quickest possible lap here is about 80 s, so anything
     // near-instant is the car re-crossing the line, never a real lap.
-    if (T_.armed && lap > MIN_LAP) {
+    if (T_.armed && lap > MIN_LAP && !T_.cutLap) {
       T_.last = lap;
       if (T_.best == null || lap < T_.best) {
         T_.best = lap;
@@ -4089,6 +4109,7 @@ function updateTiming(loc) {
     }
     T_.lapStart = T_.now;       // first crossing out of the grid just starts lap 1
     T_.armed = false;
+    T_.cutLap = false;
   }
   // Arming only mid-lap is what keeps the short run from the grid to the line
   // out of the times — on the grid the car already sits past 0.9 of a lap.
