@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0d10">
 <title>Apex GP Monaco</title>
 <style>
   :root { color-scheme: dark; }
@@ -154,6 +157,64 @@
 
   #hint { position:fixed; left:50%; bottom:52px; transform:translateX(-50%);
           font-size:11px; letter-spacing:2px; font-weight:700; opacity:.35; pointer-events:none; }
+
+  /* ---- touch controls: only on a touch device (body.touch) ---------------- */
+  #app, canvas { touch-action:none; }
+  #touch { position:fixed; inset:0; display:none; pointer-events:none; z-index:6; }
+  body.touch #touch { display:block; }
+  body.touch #hint, body.touch #pedals { display:none; }
+  #touch .pad { pointer-events:auto; touch-action:none; user-select:none; -webkit-user-select:none;
+                -webkit-tap-highlight-color:transparent; box-shadow:0 6px 24px rgba(0,0,0,.35);
+                display:grid; place-items:center; font-size:11px; font-weight:800; letter-spacing:2px; }
+  #steerPad { position:absolute; left:max(12px, env(safe-area-inset-left));
+              bottom:max(14px, env(safe-area-inset-bottom)); width:min(44vw, 330px); height:98px;
+              border-radius:22px; background:rgba(10,12,14,.5); border:1px solid rgba(255,255,255,.16); }
+  #steerKnob { width:76px; height:76px; border-radius:50%; background:rgba(255,255,255,.15);
+               border:1px solid rgba(255,255,255,.3); color:rgba(255,255,255,.6);
+               display:grid; place-items:center; font-size:10px; font-weight:800; letter-spacing:2px;
+               transition:background .12s, color .12s; }
+  #steerPad.on #steerKnob { background:#ffd23f; border-color:#ffd23f; color:#1d1f23; }
+  #pedalPads { position:absolute; right:max(12px, env(safe-area-inset-right));
+               bottom:max(14px, env(safe-area-inset-bottom)); display:flex; gap:12px; align-items:flex-end; }
+  #brakePad { width:96px; height:96px; border-radius:50%; background:rgba(255,92,92,.26);
+              border:1px solid rgba(255,255,255,.22); color:#ffe2e2; }
+  #gasPad { width:112px; height:112px; border-radius:50%; background:rgba(49,208,170,.26);
+            border:1px solid rgba(255,255,255,.22); color:#d6fff4; }
+  #brakePad.on { background:#ff5c5c; color:#2a0b0b; }
+  #gasPad.on { background:#31d0aa; color:#06241d; }
+  #touchBtns { position:absolute; right:max(12px, env(safe-area-inset-right));
+               top:max(70px, calc(env(safe-area-inset-top) + 62px)); display:flex; flex-direction:column; gap:8px; }
+  #touchBtns .btn { pointer-events:auto; touch-action:manipulation; }
+  /* with thumbs in both bottom corners, the readouts move out of the way */
+  body.touch #tower { display:none; }
+  body.touch #minimap { left:auto; bottom:auto; right:max(12px, env(safe-area-inset-right));
+                        top:max(88px, calc(env(safe-area-inset-top) + 80px)); width:116px; height:92px; }
+  body.touch #touchBtns { flex-direction:row; top:max(50px, calc(env(safe-area-inset-top) + 42px)); }
+  body.touch #cluster { right:auto; left:50%; transform:translateX(-50%); bottom:4px; text-align:center; }
+  body.touch #speed { font-size:36px; letter-spacing:-1px; }
+  body.touch #speed small { font-size:12px; }
+  body.touch #gear { font-size:17px; margin-top:0; }
+  body.touch #assist { display:none; }
+  body.touch #revwrap { bottom:118px; width:min(300px, 36vw); }
+  body.touch #tyres { left:max(12px, env(safe-area-inset-left)); bottom:126px; }
+  body.touch #warn { top:42px; }
+  body.touch #pitmsg { top:76px; font-size:15px; padding:6px 12px; }
+  #rotate { position:fixed; inset:0; z-index:20; display:none; place-items:center; text-align:center; padding:30px;
+            background:#0b0d10; color:#e9edf2; font-size:16px; font-weight:700; letter-spacing:1px; line-height:1.6; }
+  body.touch #rotate.show { display:grid; }
+  @media (max-width: 860px) {
+    #tower { display:none; }
+    #speed { font-size:46px; letter-spacing:-2px; }
+    #speed small { font-size:13px; }
+    #gear { font-size:22px; }
+    #minimap { width:130px; height:102px; }
+    #tyres { bottom:120px; }
+    #timing { left:14px; top:12px; }
+    #curlap { font-size:24px; }
+    #help { max-width:min(440px, 93vw); max-height:84vh; overflow:auto; padding:20px 22px; }
+    #setup { top:92px; min-width:0; width:min(330px, 93vw); }
+    #restartBtn { top:104px; left:14px; }
+  }
 </style>
 </head>
 <body>
@@ -201,6 +262,20 @@
 <div id="flash"></div>
 <div id="hint">C — CAMERA · R — RESET · ENTER — RESTART · H — HELP</div>
 
+<div id="touch">
+  <div id="steerPad" class="pad"><div id="steerKnob">STEER</div></div>
+  <div id="pedalPads">
+    <div id="brakePad" class="pad">BRAKE</div>
+    <div id="gasPad" class="pad">GAS</div>
+  </div>
+  <div id="touchBtns">
+    <button class="btn" id="camBtn">CAM</button>
+    <button class="btn" id="tyreBtn">TYRE</button>
+    <button class="btn" id="resetTouchBtn">RESET</button>
+  </div>
+</div>
+<div id="rotate">Turn your device sideways to race<br><small style="opacity:.6;font-weight:600">landscape gives you the whole track</small></div>
+
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1>Apex GP — Monaco</h1>
@@ -214,6 +289,7 @@
     <tr><td class="key"><kbd>C</kbd></td><td>Camera: chase / cockpit / TV</td></tr>
     <tr><td class="key"><kbd>T</kbd></td><td>Tyres for the next stop — worn ones cost grip and lap time</td></tr>
     <tr><td class="key">Pit lane</td><td>In on the right after Rascasse, 80 km/h — stop in the red box</td></tr>
+    <tr><td class="key">On a phone</td><td>On-screen pad: steer with the left thumb, gas &amp; brake with the right</td></tr>
     <tr><td class="key">On the grid</td><td>Click your laps, grid slot and rivals — or <kbd>L</kbd> <kbd>G</kbd> <kbd>K</kbd></td></tr>
     <tr><td class="key"><kbd>Enter</kbd></td><td>Restart the race — or click RESTART</td></tr>
     <tr><td class="key"><kbd>R</kbd></td><td>Reset to track</td></tr>
@@ -404,8 +480,11 @@ function applyAssist(i) {
 
 /* ---------------------------------------------------------------- renderer */
 const app = document.getElementById('app');
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Phones and tablets: render at a lower pixel ratio and with a smaller shadow
+// map. A retina phone is 3x, which costs nine times the pixels for little gain.
+const MOBILE = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+const renderer = new THREE.WebGLRenderer({ antialias: !MOBILE, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 // Colour-managed output with a filmic curve: highlights roll off instead of
 // clipping, so sunlit bodywork and white lines keep their shape.
@@ -453,7 +532,7 @@ scene.add(new THREE.HemisphereLight(0xa8c6e4, 0x4a4438, 0.38));
 const sun = new THREE.DirectionalLight(0xfff1dc, 2.0);
 sun.position.set(240, 420, 160);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(MOBILE ? 1024 : 2048, MOBILE ? 1024 : 2048);
 sun.shadow.bias = -0.0006;
 sun.shadow.normalBias = 0.02;
 const sc = sun.shadow.camera;
@@ -2770,7 +2849,7 @@ const S = {
   pit: 'none', pitT: 0,    // 'none' | 'service' | 'done'
 };
 
-const input = { thr: 0, brk: 0, left: 0, right: 0, hand: 0 };
+const input = { thr: 0, brk: 0, left: 0, right: 0, hand: 0, axis: 0, axisOn: false };
 const keys = Object.create(null);
 
 function resetCar(atIndex) {
@@ -3492,11 +3571,72 @@ addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
 function readInput() {
-  input.thr   = (keys.KeyW || keys.ArrowUp) ? 1 : 0;
-  input.brk   = (keys.KeyS || keys.ArrowDown) ? 1 : 0;
+  input.thr   = (keys.KeyW || keys.ArrowUp) ? 1 : TOUCH.thr;
+  input.brk   = (keys.KeyS || keys.ArrowDown) ? 1 : TOUCH.brk;
   input.left  = (keys.KeyA || keys.ArrowLeft) ? 1 : 0;
   input.right = (keys.KeyD || keys.ArrowRight) ? 1 : 0;
   input.hand  = keys.Space ? 1 : 0;
+  // the pad is analog: the finger's position across it *is* the steering angle
+  input.axisOn = TOUCH.axisOn && !input.left && !input.right;
+  input.axis   = input.axisOn ? TOUCH.axis : 0;
+}
+
+/* ---------------------------------------------------------- touch controls --
+   On a phone or tablet: analog steering under the left thumb, throttle and
+   brake under the right, and the keys that have no equivalent as buttons.
+   The keyboard keeps working, so a tablet with one attached loses nothing. */
+const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0 };
+{
+  const forced = /[?&]touch=(1|on)/.test(location.search);
+  if (forced || MOBILE) document.body.classList.add('touch');
+
+  const pad = document.getElementById('steerPad'), knob = document.getElementById('steerKnob');
+  const rotate = document.getElementById('rotate');
+
+  const holdButton = (el, set) => {                  // press and hold: gas, brake
+    let id = null;
+    const down = e => { id = e.pointerId; el.setPointerCapture(id); el.classList.add('on'); set(1); audioStart(); e.preventDefault(); };
+    const up = e => { if (id === null) return; id = null; el.classList.remove('on'); set(0); e.preventDefault(); };
+    el.addEventListener('pointerdown', down);
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, up);
+  };
+  holdButton(document.getElementById('gasPad'), v => TOUCH.thr = v);
+  holdButton(document.getElementById('brakePad'), v => TOUCH.brk = v);
+
+  {                                                   // steering: slide across the pad
+    let id = null;
+    const track = e => {
+      const r = pad.getBoundingClientRect();
+      TOUCH.axis = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width * 2 - 1) * 1.15));
+      knob.style.transform = 'translateX(' + (TOUCH.axis * (r.width / 2 - 46)).toFixed(1) + 'px)';
+    };
+    pad.addEventListener('pointerdown', e => {
+      id = e.pointerId; pad.setPointerCapture(id); pad.classList.add('on');
+      TOUCH.axisOn = true; track(e); audioStart(); e.preventDefault();
+    });
+    pad.addEventListener('pointermove', e => { if (e.pointerId === id) { track(e); e.preventDefault(); } });
+    const release = e => {
+      if (e.pointerId !== id) return;
+      id = null; TOUCH.axisOn = false; TOUCH.axis = 0;
+      pad.classList.remove('on'); knob.style.transform = 'translateX(0)';
+      e.preventDefault();
+    };
+    for (const ev of ['pointerup', 'pointercancel']) pad.addEventListener(ev, release);
+  }
+
+  const tap = (id, fn) => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', e => { fn(); e.currentTarget.blur(); });
+  };
+  tap('camBtn', () => { camMode = (camMode + 1) % 3; });
+  tap('tyreBtn', () => { S.nextTyre = (S.nextTyre + 1) % COMPOUNDS.length; });
+  tap('resetTouchBtn', () => { resetCar(); camSnap = true; });
+
+  const checkRotate = () => rotate.classList.toggle('show', innerHeight > innerWidth);
+  addEventListener('resize', checkRotate);
+  addEventListener('orientationchange', () => setTimeout(checkRotate, 350));
+  checkRotate();
+  addEventListener('pointerdown', () => audioStart(), { passive: true });   // iOS unlocks audio on a gesture
 }
 
 /* --------------------------------------------------------------- physics */
@@ -3587,7 +3727,11 @@ function step(dt) {
   // response curve keeps small inputs small. The wheel then chases the target.
   const want = input.right - input.left;   // +right
   const rise = T.stickRise / (1 + Math.abs(vLong) * T.stickSpeedSlow);
-  if (want !== 0) {
+  if (input.axisOn) {
+    // touch pad: the finger's position is the stick itself, eased so it can't snap
+    const r = rise * 1.7 * dt;
+    S.stick += clamp(input.axis - S.stick, -r, r);
+  } else if (want !== 0) {
     const r = Math.sign(S.stick) === -want ? rise * 2.2 : rise;   // reversing passes centre quickly
     S.stick = clamp(S.stick + want * r * dt, -1, 1);
   } else {
