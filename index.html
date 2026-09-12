@@ -210,6 +210,20 @@
   body.touch #tyres { left:max(12px, env(safe-area-inset-left)); bottom:126px; }
   body.touch #warn { top:42px; }
   body.touch #pitmsg { top:76px; font-size:15px; padding:6px 12px; }
+  /* tilt steering: the pad gives way to a slim level indicator */
+  body.tilt #steerPad { display:none; }
+  #tiltBar { position:absolute; left:max(12px, env(safe-area-inset-left));
+             bottom:max(16px, env(safe-area-inset-bottom)); width:min(40vw, 290px); height:36px;
+             border-radius:18px; background:rgba(10,12,14,.5); border:1px solid rgba(255,255,255,.16);
+             display:none; place-items:center; pointer-events:none; }
+  body.touch.tilt #tiltBar { display:grid; }
+  #tiltBar .mid { position:absolute; width:2px; height:18px; background:rgba(255,255,255,.22); }
+  #tiltBar .dot { width:26px; height:26px; border-radius:50%; background:#ffd23f;
+                  box-shadow:0 0 12px rgba(255,210,63,.5); }
+  #levelBtn { display:none; }
+  body.touch.tilt #levelBtn { display:block; }
+  #steerRow { display:none; }
+  body.touch #steerRow { display:flex; }
   #rotate { position:fixed; inset:0; z-index:20; display:none; place-items:center; text-align:center; padding:30px;
             background:#0b0d10; color:#e9edf2; font-size:16px; font-weight:700; letter-spacing:1px; line-height:1.6; }
   body.touch #rotate.show { display:grid; }
@@ -265,6 +279,7 @@
   <div class="row"><span class="lbl">LAPS</span><span class="opts" id="lapOpts"></span></div>
   <div class="row"><span class="lbl">START</span><button class="btn" id="gridDown">◀</button><span class="val" id="gridVal">P10</span><button class="btn" id="gridUp">▶</button></div>
   <div class="row"><span class="lbl">RIVALS</span><span class="opts" id="aiOpts"></span></div>
+  <div class="row" id="steerRow"><span class="lbl">STEERING</span><span class="opts" id="steerOpts"></span></div>
   <button class="btn" id="goBtn">START RACE</button>
 </div>
 <button class="btn hidden" id="restartBtn">RESTART</button>
@@ -275,6 +290,7 @@
 
 <div id="touch">
   <div id="steerPad" class="pad"><div id="steerKnob">STEER</div></div>
+  <div id="tiltBar"><div class="mid"></div><div class="dot"></div></div>
   <div id="pedalPads">
     <div id="brakePad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">BRAKE</div></div>
     <div id="gasPad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">GAS</div></div>
@@ -282,6 +298,7 @@
   <div id="touchBtns">
     <button class="btn" id="camBtn">CAM</button>
     <button class="btn" id="tyreBtn">TYRE</button>
+    <button class="btn" id="levelBtn">LEVEL</button>
     <button class="btn" id="resetTouchBtn">RESET</button>
   </div>
 </div>
@@ -494,6 +511,9 @@ const app = document.getElementById('app');
 // Phones and tablets: render at a lower pixel ratio and with a smaller shadow
 // map. A retina phone is 3x, which costs nine times the pixels for little gain.
 const MOBILE = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+// Touch state lives up here because the race setup UI reads the steering mode
+// while building its buttons, long before the touch handlers are wired up.
+const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0, mode: 'pad' };
 const renderer = new THREE.WebGLRenderer({ antialias: !MOBILE, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
@@ -3154,18 +3174,22 @@ function adaptPace(playerLap) {
 }
 /* --- the setup panel on the grid: click your laps, slot and rivals ---------- */
 const setupEl = document.getElementById('setup'), lapOptsEl = document.getElementById('lapOpts');
+const steerOptsEl = document.getElementById('steerOpts');
 const aiOptsEl = document.getElementById('aiOpts'), gridValEl = document.getElementById('gridVal');
 const restartBtn = document.getElementById('restartBtn');
 function reGrid() { setupRace(); RACE.armed = false; updateSetupUI(); }   // change something: line up again, wait
 function updateSetupUI() {
   for (const b of lapOptsEl.children) b.classList.toggle('on', +b.dataset.laps === RACE.laps);
   for (const b of aiOptsEl.children) b.classList.toggle('on', +b.dataset.ai === RACE.level);
+  for (const b of steerOptsEl.children) b.classList.toggle('on', b.dataset.steer === TOUCH.mode);
   gridValEl.textContent = 'P' + (RACE.grid + 1);
 }
 {
   const click = (el, fn) => el.addEventListener('click', e => { fn(e); e.currentTarget.blur(); });
   lapOptsEl.innerHTML = RACE_LAP_CHOICES.map(n => `<button class="btn" data-laps="${n}">${n}</button>`).join('');
   aiOptsEl.innerHTML = AI_LEVELS.map((l, k) => `<button class="btn" data-ai="${k}">${l.name}</button>`).join('');
+  steerOptsEl.innerHTML = '<button class="btn" data-steer="pad">PAD</button><button class="btn" data-steer="tilt">TILT</button>';
+  click(steerOptsEl, e => { const b = e.target.closest('button'); if (b) { setSteerMode(b.dataset.steer); b.blur(); } });
   click(lapOptsEl, e => { const b = e.target.closest('button'); if (b) { RACE.laps = +b.dataset.laps; reGrid(); b.blur(); } });
   click(aiOptsEl, e => { const b = e.target.closest('button'); if (b) { RACE.level = +b.dataset.ai; reGrid(); b.blur(); } });
   click(document.getElementById('gridDown'), () => { RACE.grid = (RACE.grid + RACE_CARS - 1) % RACE_CARS; reGrid(); });
@@ -3200,6 +3224,7 @@ function raceStep(dt) {
     if (RACE.t >= RACE.hold) {                                  // ...then all out, after a random pause
       RACE.lights = 0; RACE.phase = 'racing'; RACE.t = 0; RACE.clock = 0;
       T_.lapStart = T_.now;
+      if (TOUCH.mode === 'tilt' && window.levelTilt) levelTilt();   // however you hold it now is centre
       for (const r of RIVALS) r.react = 0.16 + Math.random() * 0.32;
     }
   } else RACE.clock += dt;
@@ -3596,7 +3621,6 @@ function readInput() {
    On a phone or tablet: analog steering under the left thumb, throttle and
    brake under the right, and the keys that have no equivalent as buttons.
    The keyboard keeps working, so a tablet with one attached loses nothing. */
-const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0 };
 {
   const forced = /[?&]touch=(1|on)/.test(location.search);
   if (forced || MOBILE) document.body.classList.add('touch');
@@ -3634,6 +3658,7 @@ const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0 };
       knob.style.transform = 'translateX(' + (TOUCH.axis * (r.width / 2 - 46)).toFixed(1) + 'px)';
     };
     pad.addEventListener('pointerdown', e => {
+      if (TOUCH.mode === 'tilt') return;
       id = e.pointerId; pad.setPointerCapture(id); pad.classList.add('on');
       TOUCH.axisOn = true; track(e); audioStart(); e.preventDefault();
     });
@@ -3654,6 +3679,64 @@ const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0 };
   tap('camBtn', () => { camMode = (camMode + 1) % 3; });
   tap('tyreBtn', () => { S.nextTyre = (S.nextTyre + 1) % COMPOUNDS.length; });
   tap('resetTouchBtn', () => { resetCar(); camSnap = true; });
+
+  /* ---- tilt steering ---------------------------------------------------
+     Hold the device like a wheel and roll it. Which axis that is depends on how
+     the screen is rotated, so the reading is picked from the orientation angle,
+     and it is zeroed wherever you are holding it when you switch tilt on. */
+  let tiltZero = null, tiltSeen = 0;
+  const tiltRead = e => {
+    const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    const b = e.beta, g = e.gamma;
+    if (b === null || g === null) return null;
+    return ang === 90 ? b : ang === 270 || ang === -90 ? -b : ang === 180 ? -g : g;
+  };
+  const onTilt = e => {
+    const raw = tiltRead(e);
+    if (raw === null) return;
+    tiltSeen = Date.now();
+    if (tiltZero === null) tiltZero = raw;
+    let d = raw - tiltZero;
+    if (d > 180) d -= 360; else if (d < -180) d += 360;
+    const dead = 2.5, span = 26;                        // ~26 degrees of roll is full lock
+    const mag = Math.max(0, Math.abs(d) - dead) / span;
+    TOUCH.axis = Math.max(-1, Math.min(1, Math.sign(d) * mag));
+    TOUCH.axisOn = true;
+    document.querySelector('#tiltBar .dot').style.transform =
+      'translateX(' + (TOUCH.axis * 118).toFixed(1) + 'px)';
+  };
+  // `silent` is for restoring a saved choice at load: iOS only grants motion
+  // access during a tap, so a quiet fall back to the pad beats an error flash.
+  window.setSteerMode = async (mode, silent) => {
+    if (mode === 'tilt') {
+      try {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+          if (await DeviceOrientationEvent.requestPermission() !== 'granted') {
+            if (!silent) raceFlash('TILT NEEDS PERMISSION');
+            return setSteerMode('pad');
+          }
+        }
+      } catch (err) {
+        if (!silent) raceFlash('TILT UNAVAILABLE ON THIS DEVICE');
+        return setSteerMode('pad');
+      }
+      tiltZero = null; tiltSeen = 0;
+      addEventListener('deviceorientation', onTilt);
+      setTimeout(() => {                                 // no readings? this device has no sensor
+        if (!tiltSeen && TOUCH.mode === 'tilt') { if (!silent) raceFlash('NO TILT SENSOR'); setSteerMode('pad'); }
+      }, 1500);
+    } else {
+      removeEventListener('deviceorientation', onTilt);
+      TOUCH.axisOn = false; TOUCH.axis = 0;
+    }
+    TOUCH.mode = mode;
+    document.body.classList.toggle('tilt', mode === 'tilt');
+    try { localStorage.setItem('apexSteer', mode); } catch (err) {}
+    updateSetupUI();
+  };
+  window.levelTilt = () => { tiltZero = null; };
+  tap('levelBtn', () => { levelTilt(); raceFlash('LEVELLED'); });   // re-zero wherever you hold it
+  try { if (localStorage.getItem('apexSteer') === 'tilt') setSteerMode('tilt', true); } catch (err) {}
 
   const checkRotate = () => rotate.classList.toggle('show', innerHeight > innerWidth);
   addEventListener('resize', checkRotate);
