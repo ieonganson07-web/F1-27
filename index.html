@@ -212,14 +212,6 @@
   body.touch #pitmsg { top:76px; font-size:15px; padding:6px 12px; }
   /* tilt steering: the pad gives way to a slim level indicator */
   body.tilt #steerPad { display:none; }
-  #tiltBar { position:absolute; left:max(12px, env(safe-area-inset-left));
-             bottom:max(16px, env(safe-area-inset-bottom)); width:min(40vw, 290px); height:36px;
-             border-radius:18px; background:rgba(10,12,14,.5); border:1px solid rgba(255,255,255,.16);
-             display:none; place-items:center; pointer-events:none; }
-  body.touch.tilt #tiltBar { display:grid; }
-  #tiltBar .mid { position:absolute; width:2px; height:18px; background:rgba(255,255,255,.22); }
-  #tiltBar .dot { width:26px; height:26px; border-radius:50%; background:#ffd23f;
-                  box-shadow:0 0 12px rgba(255,210,63,.5); }
   #levelBtn { display:none; }
   body.touch.tilt #levelBtn { display:block; }
   #rotate { position:fixed; inset:0; z-index:20; display:none; place-items:center; text-align:center; padding:30px;
@@ -287,7 +279,6 @@
 
 <div id="touch">
   <div id="steerPad" class="pad"><div id="steerKnob">STEER</div></div>
-  <div id="tiltBar"><div class="mid"></div><div class="dot"></div></div>
   <div id="pedalPads">
     <div id="brakePad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">BRAKE</div></div>
     <div id="gasPad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">GAS</div></div>
@@ -304,7 +295,7 @@
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1>Apex GP — Monaco</h1>
-  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 5 · tilt steering</b></p>
+  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 6 · tilt steering</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -3702,8 +3693,6 @@ function readInput() {
     const mag = Math.max(0, Math.abs(d) - dead) / span;
     TOUCH.axis = Math.max(-1, Math.min(1, Math.sign(d) * mag));
     TOUCH.axisOn = true;
-    document.querySelector('#tiltBar .dot').style.transform =
-      'translateX(' + (TOUCH.axis * 118).toFixed(1) + 'px)';
   };
   // `silent` is for restoring a saved choice at load: iOS only grants motion
   // access during a tap, so a quiet fall back to the pad beats an error flash.
