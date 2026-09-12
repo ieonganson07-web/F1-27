@@ -159,7 +159,9 @@
           font-size:11px; letter-spacing:2px; font-weight:700; opacity:.35; pointer-events:none; }
 
   /* ---- touch controls: only on a touch device (body.touch) ---------------- */
+  html, body { touch-action:none; overscroll-behavior:none; }
   #app, canvas { touch-action:none; }
+  #help, #results { touch-action:pan-y; }          /* these still need to scroll */
   #touch { position:fixed; inset:0; display:none; pointer-events:none; z-index:6; }
   body.touch #touch { display:block; }
   body.touch #hint, body.touch #pedals { display:none; }
@@ -176,12 +178,21 @@
   #steerPad.on #steerKnob { background:#ffd23f; border-color:#ffd23f; color:#1d1f23; }
   #pedalPads { position:absolute; right:max(12px, env(safe-area-inset-right));
                bottom:max(14px, env(safe-area-inset-bottom)); display:flex; gap:12px; align-items:flex-end; }
-  #brakePad { width:96px; height:96px; border-radius:50%; background:rgba(255,92,92,.26);
-              border:1px solid rgba(255,255,255,.22); color:#ffe2e2; }
-  #gasPad { width:112px; height:112px; border-radius:50%; background:rgba(49,208,170,.26);
-            border:1px solid rgba(255,255,255,.22); color:#d6fff4; }
-  #brakePad.on { background:#ff5c5c; color:#2a0b0b; }
-  #gasPad.on { background:#31d0aa; color:#06241d; }
+  /* Pedals, not buttons: hinged at the bottom, and how far up you press is how
+     far they travel — the fill shows it, the same as a real throttle. */
+  #touch .pedal { position:relative; width:82px; height:158px; border-radius:16px 16px 9px 9px;
+                  border:1px solid rgba(255,255,255,.22); overflow:hidden; display:block;
+                  background:linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.02)); }
+  #touch #brakePad { height:132px; }
+  #touch .pedal.on { border-color:rgba(255,255,255,.55); }
+  #touch .pedal .fill { position:absolute; left:0; right:0; bottom:0; height:0%; }
+  #touch #gasPad .fill { background:linear-gradient(180deg,#5ce0c0,#18b894); }
+  #touch #brakePad .fill { background:linear-gradient(180deg,#ff8a8a,#ff3b3b); }
+  #touch .pedal .ribs { position:absolute; left:12px; right:12px; top:12px; height:58px; border-radius:7px;
+                        background:repeating-linear-gradient(180deg, rgba(255,255,255,.18) 0 3px, transparent 3px 12px); }
+  #touch .pedal .lbl { position:absolute; left:0; right:0; bottom:9px; text-align:center;
+                       font-size:10px; font-weight:800; letter-spacing:2px; color:rgba(255,255,255,.82);
+                       text-shadow:0 1px 3px rgba(0,0,0,.6); }
   #touchBtns { position:absolute; right:max(12px, env(safe-area-inset-right));
                top:max(70px, calc(env(safe-area-inset-top) + 62px)); display:flex; flex-direction:column; gap:8px; }
   #touchBtns .btn { pointer-events:auto; touch-action:manipulation; }
@@ -265,8 +276,8 @@
 <div id="touch">
   <div id="steerPad" class="pad"><div id="steerKnob">STEER</div></div>
   <div id="pedalPads">
-    <div id="brakePad" class="pad">BRAKE</div>
-    <div id="gasPad" class="pad">GAS</div>
+    <div id="brakePad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">BRAKE</div></div>
+    <div id="gasPad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">GAS</div></div>
   </div>
   <div id="touchBtns">
     <button class="btn" id="camBtn">CAM</button>
@@ -3593,15 +3604,27 @@ const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0 };
   const pad = document.getElementById('steerPad'), knob = document.getElementById('steerKnob');
   const rotate = document.getElementById('rotate');
 
-  const holdButton = (el, set) => {                  // press and hold: gas, brake
+  const pedal = (el, set) => {          // press near the top for more, ride it lower for less
+    const fill = el.querySelector('.fill');
     let id = null;
-    const down = e => { id = e.pointerId; el.setPointerCapture(id); el.classList.add('on'); set(1); audioStart(); e.preventDefault(); };
-    const up = e => { if (id === null) return; id = null; el.classList.remove('on'); set(0); e.preventDefault(); };
-    el.addEventListener('pointerdown', down);
-    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, up);
+    const apply = e => {
+      const r = el.getBoundingClientRect();
+      const up = Math.max(0, Math.min(1, (r.bottom - e.clientY) / r.height));
+      const v = 0.45 + up * 0.55;                   // even a light tap drives properly
+      set(v); fill.style.height = (v * 100).toFixed(0) + '%';
+    };
+    el.addEventListener('pointerdown', e => {
+      id = e.pointerId; el.setPointerCapture(id); el.classList.add('on'); apply(e); audioStart(); e.preventDefault();
+    });
+    el.addEventListener('pointermove', e => { if (e.pointerId === id) { apply(e); e.preventDefault(); } });
+    const lift = e => {
+      if (id === null) return;
+      id = null; el.classList.remove('on'); set(0); fill.style.height = '0%'; e.preventDefault();
+    };
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, lift);
   };
-  holdButton(document.getElementById('gasPad'), v => TOUCH.thr = v);
-  holdButton(document.getElementById('brakePad'), v => TOUCH.brk = v);
+  pedal(document.getElementById('gasPad'), v => TOUCH.thr = v);
+  pedal(document.getElementById('brakePad'), v => TOUCH.brk = v);
 
   {                                                   // steering: slide across the pad
     let id = null;
@@ -3637,6 +3660,21 @@ const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0 };
   addEventListener('orientationchange', () => setTimeout(checkRotate, 350));
   checkRotate();
   addEventListener('pointerdown', () => audioStart(), { passive: true });   // iOS unlocks audio on a gesture
+
+  // iOS Safari ignores user-scalable=no, so refuse the zoom gestures outright —
+  // a mis-hit on a pedal used to leave the view zoomed with no way back.
+  for (const ev of ['gesturestart', 'gesturechange', 'gestureend'])
+    document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+  document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  {                                     // double-tap anywhere on the view: no zoom either
+    let last = 0;
+    document.getElementById('app').addEventListener('touchend', e => {
+      const now = Date.now();
+      if (now - last < 400) e.preventDefault();
+      last = now;
+    }, { passive: false });
+  }
 }
 
 /* --------------------------------------------------------------- physics */
@@ -3758,7 +3796,7 @@ function step(dt) {
       T.maxTraction,                       // mechanical cap
       T.power / Math.max(Math.abs(vLong), 8), // power curve
       mu * loadR * T.launchGrip            // what the rears can put down
-    );
+    ) * input.thr;                         // pedal travel: 1 on a key, partial on the touch pedal
     // traction control: ease off once the rear is genuinely sliding
     const over = clamp((Math.abs(slipR) - 0.10) / 0.12, 0, 1);
     drive *= 1 - over * T.tractionControl;
@@ -3768,7 +3806,7 @@ function step(dt) {
   let Fx = drive;
   if (input.brk) {
     const maxBrake = Math.min(T.brakeForce, mu * load * 0.98);
-    Fx -= (vLong > 0.5) ? maxBrake : T.reverseForce;   // rolls backwards once stopped
+    Fx -= ((vLong > 0.5) ? maxBrake : T.reverseForce) * input.brk;   // rolls backwards once stopped
   }
   Fx -= Math.sign(vLong) * T.rollDrag;
   Fx -= T.dragCoef * vLong * Math.abs(vLong);
@@ -3935,17 +3973,22 @@ function fmt(ms) {
 function updateTiming(loc) {
   const s = loc.s;
   // crossing the line: progress wraps from near-full to near-zero, going forwards
-  if (T_.armed && T_.prevS > trackLength * 0.75 && s < trackLength * 0.25) {
-    const lap = T_.now - T_.lapStart;
-    T_.last = lap;
-    if (T_.best == null || lap < T_.best) {
-      T_.best = lap;
-      flashEl.animate([{ opacity: 0.9 }, { opacity: 0 }], { duration: 700, easing: 'ease-out' });
+  if (T_.prevS > trackLength * 0.75 && s < trackLength * 0.25) {      // crossed the line
+    if (T_.armed) {
+      const lap = T_.now - T_.lapStart;
+      T_.last = lap;
+      if (T_.best == null || lap < T_.best) {
+        T_.best = lap;
+        flashEl.animate([{ opacity: 0.9 }, { opacity: 0 }], { duration: 700, easing: 'ease-out' });
+      }
+      T_.laps++;
     }
-    T_.laps++;
-    T_.lapStart = T_.now;
+    T_.lapStart = T_.now;       // first crossing out of the grid just starts lap 1
+    T_.armed = false;
   }
-  if (s > trackLength * 0.4) T_.armed = true;   // must actually go round
+  // Arming only mid-lap is what keeps the short run from the grid to the line
+  // out of the times — on the grid the car already sits past 0.9 of a lap.
+  if (s > trackLength * 0.3 && s < trackLength * 0.7) T_.armed = true;
   T_.prevS = s;
 }
 
