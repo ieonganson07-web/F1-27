@@ -222,6 +222,12 @@
   body.tilt #steerPad { display:none; }
   #levelBtn { display:none; }
   body.touch.tilt #levelBtn { display:block; }
+  /* the pad is only ever a stand-in, so say so and offer a way back */
+  #tiltOff { position:absolute; left:50%; transform:translateX(-50%);
+             top:max(46px, calc(env(safe-area-inset-top) + 38px)); display:none;
+             pointer-events:auto; letter-spacing:1px; font-size:11px; padding:7px 13px;
+             background:rgba(208,38,58,.9); border-color:rgba(255,255,255,.35); }
+  body.touch:not(.tilt) #tiltOff { display:block; }
   #rotate { position:fixed; inset:0; z-index:20; display:none; place-items:center; text-align:center; padding:30px;
             background:#0b0d10; color:#e9edf2; font-size:16px; font-weight:700; letter-spacing:1px; line-height:1.6; }
   body.touch #rotate.show { display:grid; }
@@ -286,6 +292,7 @@
 
 <div id="touch">
   <div id="steerPad" class="pad"><div id="steerKnob">STEER</div></div>
+  <button class="btn" id="tiltOff">TAP TO ENABLE TILT STEERING</button>
   <div id="pedalPads">
     <div id="brakePad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">BRAKE</div></div>
     <div id="gasPad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">GAS</div></div>
@@ -302,7 +309,7 @@
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1>Apex GP — Monaco</h1>
-  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 7 · chicane & tower</b></p>
+  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 8 · tilt retry</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -3670,6 +3677,7 @@ function readInput() {
   const pad = document.getElementById('steerPad'), knob = document.getElementById('steerKnob');
   const rotate = document.getElementById('rotate');
 
+  const click = (el, fn) => el.addEventListener('click', e => { fn(e); e.currentTarget.blur(); });
   const pedal = (el, set) => {          // press near the top for more, ride it lower for less
     const fill = el.querySelector('.fill');
     let id = null;
@@ -3764,11 +3772,11 @@ function readInput() {
       addEventListener('deviceorientation', onTilt);
       setTimeout(() => {                                 // no readings? this device has no sensor
         if (!tiltSeen && TOUCH.mode === 'tilt') { if (!silent) raceFlash('NO TILT SENSOR'); setSteerMode('pad'); }
-      }, 1500);
+      }, 3000);
     } else {
       removeEventListener('deviceorientation', onTilt);
       TOUCH.axisOn = false; TOUCH.axis = 0;
-      if (isTouch) raceFlash('STEERING PAD — NO TILT AVAILABLE');
+      if (isTouch && !silent) raceFlash('TILT UNAVAILABLE — USING THE PAD');
     }
     TOUCH.mode = mode;
     document.body.classList.toggle('tilt', mode === 'tilt');
@@ -3785,6 +3793,8 @@ function readInput() {
     setSteerMode('tilt');
   };
   addEventListener('pointerdown', () => ensureTilt(), { passive: true });
+  // Asking again is a fresh gesture, so the iOS prompt can appear a second time.
+  click(document.getElementById('tiltOff'), () => { tiltAsked = false; tiltSeen = 0; setSteerMode('tilt'); });
 
   const checkRotate = () => rotate.classList.toggle('show', innerHeight > innerWidth);
   addEventListener('resize', checkRotate);
