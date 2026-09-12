@@ -290,7 +290,7 @@
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1>Apex GP — Monaco</h1>
-  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</p>
+  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 2026-09-12 · 3</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -3960,6 +3960,7 @@ const lastEl   = document.getElementById('lastlap');
 const warnEl   = document.getElementById('warn');
 const flashEl  = document.getElementById('flash');
 
+const MIN_LAP = 40000;        // ms — no real lap of this track is anywhere near this quick
 const T_ = { lapStart: 0, now: 0, best: null, last: null, laps: 0, prevS: 0, armed: false };
 
 function fmt(ms) {
@@ -3973,9 +3974,12 @@ function fmt(ms) {
 function updateTiming(loc) {
   const s = loc.s;
   // crossing the line: progress wraps from near-full to near-zero, going forwards
+  if (T_.prevS < trackLength * 0.25 && s > trackLength * 0.75) T_.armed = false;   // reversed over the line
   if (T_.prevS > trackLength * 0.75 && s < trackLength * 0.25) {      // crossed the line
-    if (T_.armed) {
-      const lap = T_.now - T_.lapStart;
+    const lap = T_.now - T_.lapStart;
+    // Belt and braces: the quickest possible lap here is about 80 s, so anything
+    // near-instant is the car re-crossing the line, never a real lap.
+    if (T_.armed && lap > MIN_LAP) {
       T_.last = lap;
       if (T_.best == null || lap < T_.best) {
         T_.best = lap;
