@@ -197,10 +197,18 @@
                top:max(70px, calc(env(safe-area-inset-top) + 62px)); display:flex; flex-direction:column; gap:8px; }
   #touchBtns .btn { pointer-events:auto; touch-action:manipulation; }
   /* with thumbs in both bottom corners, the readouts move out of the way */
-  body.touch #tower { display:none; }
-  body.touch #minimap { left:auto; bottom:auto; right:max(12px, env(safe-area-inset-right));
-                        top:max(88px, calc(env(safe-area-inset-top) + 80px)); width:116px; height:92px; }
-  body.touch #touchBtns { flex-direction:row; top:max(50px, calc(env(safe-area-inset-top) + 42px)); }
+  /* the tower comes back on touch, shrunk, and only the rows that matter */
+  body.touch #tower { top:max(76px, calc(env(safe-area-inset-top) + 68px));
+                      right:max(12px, env(safe-area-inset-right)); }
+  body.touch #tower .tr { font-size:9.5px; padding:0 7px; gap:5px; }
+  body.touch #tower .tr b { width:13px; }
+  body.touch #tower .tr i { width:2px; height:9px; }
+  body.touch #tower .tr span { width:26px; }
+  body.touch #minimap { left:max(12px, env(safe-area-inset-left)); bottom:max(12px, env(safe-area-inset-bottom));
+                        right:auto; top:auto; width:118px; height:92px; }
+  body.touch:not(.tilt) #minimap { display:none; }     /* the pad needs that corner */
+  body.touch #touchBtns { flex-direction:row; right:auto; top:max(148px, calc(env(safe-area-inset-top) + 140px));
+                          left:max(12px, env(safe-area-inset-left)); }
   body.touch #cluster { right:auto; left:50%; transform:translateX(-50%); bottom:4px; text-align:center; }
   body.touch #speed { font-size:36px; letter-spacing:-1px; }
   body.touch #speed small { font-size:12px; }
@@ -218,7 +226,6 @@
             background:#0b0d10; color:#e9edf2; font-size:16px; font-weight:700; letter-spacing:1px; line-height:1.6; }
   body.touch #rotate.show { display:grid; }
   @media (max-width: 860px) {
-    #tower { display:none; }
     #speed { font-size:46px; letter-spacing:-2px; }
     #speed small { font-size:13px; }
     #gear { font-size:22px; }
@@ -295,7 +302,7 @@
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1>Apex GP — Monaco</h1>
-  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 6 · tilt steering</b></p>
+  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 7 · chicane & tower</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -1297,6 +1304,12 @@ const kerbMask = new Float32Array(SAMPLES);
     for (let k = -9; k <= 9; k++) m = Math.max(m, raw[(i + k + SAMPLES) % SAMPLES]);
     kerbMask[i] = m;
   }
+  // The Nouvelle Chicane's kerbs are the widest on the circuit — big flat
+  // red and white blocks either side of the flick. Keep them inside the Armco.
+  for (let i = 0; i < SAMPLES; i++) {
+    const d = lapD(i);
+    if (d > 2032 && d < 2178) kerbMask[i] = Math.max(kerbMask[i], 1) * 1.75;
+  }
 }
 
 // Asphalt: aggregate speckle with a few lighter patches and old seams, so the
@@ -1815,6 +1828,33 @@ function buildCrowd() {
   for (let x = -40; x < 256; x += 64) {
     g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 32, 0); g.lineTo(x + 64, 64);
     g.lineTo(x + 32, 128); g.lineTo(x, 128); g.lineTo(x + 32, 64); g.closePath(); g.fill();
+  }
+  // Painted run-off: hatching across the escape road and a cross at the end,
+  // as on the real thing, so the tarmac straight on reads as somewhere you
+  // have already made a mistake.
+  {
+    const lay = (d, lateral, len, wid, rot, col, y) => {
+      const si = distSample(d), sn = path[si];
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(len, wid), new THREE.MeshBasicMaterial({ color: col }));
+      m.rotation.order = 'YXZ';
+      m.rotation.set(-Math.PI / 2, -Math.atan2(sn.tan.z, sn.tan.x) + rot, 0);
+      m.position.set(sn.pos.x + sn.nrm.x * lateral, sn.pos.y + (y || 0.038), sn.pos.z + sn.nrm.z * lateral);
+      scene.add(m);
+    };
+    for (let d = ESCAPE.full - 4; d < ESCAPE.to - 14; d += 3.4) {          // diagonal hatching
+      const si = distSample(d), inner = halfW[si] + 0.5, outer = wallAt(si, 1) - 0.7;
+      if (outer - inner < 2.5) continue;
+      lay(d, (inner + outer) / 2, (outer - inner) * 1.35, 0.55, Math.PI / 4, 0xeceff1);
+    }
+    {                                                                       // the cross, straight ahead
+      const d = ESCAPE.to - 11, si = distSample(d);
+      const inner = halfW[si] + 0.8, outer = wallAt(si, 1) - 0.9, mid = (inner + outer) / 2;
+      const arm = Math.max(3, (outer - inner) * 0.8);
+      if (outer - inner > 3) {
+        lay(d, mid, arm, 0.75, Math.PI / 4, 0xeceff1, 0.04);
+        lay(d, mid, arm, 0.75, -Math.PI / 4, 0xeceff1, 0.04);
+      }
+    }
   }
   const i = distSample(ESCAPE.to - 6), n = path[i], o = wallAt(i, 1) + 3.6;   // beside the run-off, facing braking cars
   const board = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.6),
@@ -2725,12 +2765,12 @@ function buildCar() {
   {
     const cv = document.createElement('canvas'); cv.width = 512; cv.height = 136;
     const tex = new THREE.CanvasTexture(cv);
-    const disp = new THREE.Mesh(new THREE.PlaneGeometry(0.23, 0.06),
+    const disp = new THREE.Mesh(new THREE.PlaneGeometry(0.345, 0.092),
       new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
     disp.rotation.order = 'YXZ';
     disp.rotation.y = -Math.PI / 2;           // face the driver
     disp.rotation.x = -0.3;                   // tilt up toward the eye
-    disp.position.set(1.08, 0.735, 0);
+    disp.position.set(1.02, 0.742, 0);        // a little closer to the eye as well
     disp.visible = false;
     car.add(disp);
     HALO_DISP = { mesh: disp, ctx: cv.getContext('2d'), tex };
@@ -3540,14 +3580,25 @@ function updateRaceHUD() {
   if (performance.now() >= (updateRaceHUD.next || 0)) {         // timing tower, four times a second
     updateRaceHUD.next = performance.now() + 250;
     const leader = order[0];
-    order.forEach((c, n) => {
-      const row = towerEl.children[n]; if (!row) return;
+    // A phone has no room for twenty rows, so show the podium and your own
+    // battle — the positions are the real ones, so the jump is obvious.
+    let idx = order.map((_, n) => n);
+    if (document.body.classList.contains('touch')) {
+      const me = Math.max(0, order.findIndex(c => c.isPlayer));
+      idx = [...new Set([0, 1, 2, me - 1, me, me + 1])]
+        .filter(n => n >= 0 && n < order.length).sort((a, b) => a - b);
+    }
+    for (let j = 0; j < towerEl.children.length; j++) {
+      const row = towerEl.children[j], n = idx[j];
+      if (n === undefined) { row.style.display = 'none'; continue; }
+      row.style.display = '';
+      const c = order[n];
       row.children[0].textContent = n + 1;
       row.children[1].style.background = c.color;
       row.children[2].textContent = c.code;
       row.children[3].textContent = n === 0 ? (gridded ? '' : c.done ? 'FLAG' : 'LEADER') : gridded ? '' : gapText(c, leader);
       row.classList.toggle('me', !!c.isPlayer);
-    });
+    }
   }
   if (RACE.phase === 'done') updateResults();
 }
@@ -4236,11 +4287,12 @@ function drawHaloDisplay() {
   c.fillStyle = grd; roundRect(c, 40, 16, Math.max(16, (W - 80) * r), 22, 8); c.fill();
   c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff';
   c.font = '800 72px system-ui, sans-serif'; c.fillText(HUD_STATE.g, W / 2, 90);
-  c.font = '700 30px ui-monospace, Menlo, monospace';
-  c.fillText(String(Math.round(r * 13500)), W / 2 - 130, 82);
-  c.fillText(String(Math.round(HUD_STATE.kmh)), W / 2 + 130, 82);
+  c.font = '700 26px ui-monospace, Menlo, monospace';
+  c.fillText(String(Math.round(r * 13500)), W / 2 - 138, 84);
+  c.font = '800 52px ui-monospace, Menlo, monospace';      // speed is what you read at a glance
+  c.fillText(String(Math.round(HUD_STATE.kmh)), W / 2 + 132, 84);
   c.font = '600 15px system-ui, sans-serif'; c.fillStyle = 'rgba(255,255,255,0.55)';
-  c.fillText('RPM', W / 2 - 130, 112); c.fillText('KPH', W / 2 + 130, 112);
+  c.fillText('RPM', W / 2 - 138, 110); c.fillText('KPH', W / 2 + 132, 118);
   d.tex.needsUpdate = true;
 }
 
