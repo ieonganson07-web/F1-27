@@ -241,6 +241,8 @@
     #curlap { font-size:24px; }
     #help { max-width:min(440px, 93vw); max-height:84vh; overflow:auto; padding:20px 22px; }
     #setup { top:92px; min-width:0; width:min(330px, 93vw); }
+    #setup .opts { flex-wrap:wrap; gap:5px; }
+    #setup .btn { padding:5px 8px; font-size:11px; }
     #restartBtn { top:104px; left:14px; }
   }
 </style>
@@ -279,6 +281,7 @@
 <div id="results" class="hidden"></div>
 
 <div id="setup" class="hidden">
+  <div class="row"><span class="lbl">GP</span><span class="opts" id="gpOpts"></span></div>
   <div class="row"><span class="lbl">LAPS</span><span class="opts" id="lapOpts"></span></div>
   <div class="row"><span class="lbl">START</span><button class="btn" id="gridDown">◀</button><span class="val" id="gridVal">P10</span><button class="btn" id="gridUp">▶</button></div>
   <div class="row"><span class="lbl">RIVALS</span><span class="opts" id="aiOpts"></span></div>
@@ -308,8 +311,8 @@
 
 <div id="help">
   <button id="helpClose" title="Close">×</button>
-  <h1>Apex GP — Monaco</h1>
-  <p class="sub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.<br><b style="opacity:.5;font-weight:700">build 13 · open run-off + cut penalty</b></p>
+  <h1 id="helpTitle">Apex GP — Monaco</h1>
+  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 14 · Macau Grand Prix</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -318,9 +321,9 @@
     <tr><td class="key"><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Assist: high / medium / off</td></tr>
     <tr><td class="key"><kbd>C</kbd></td><td>Camera: chase / cockpit / TV</td></tr>
     <tr><td class="key"><kbd>T</kbd></td><td>Tyres for the next stop — worn ones cost grip and lap time</td></tr>
-    <tr><td class="key">Pit lane</td><td>In on the right after Rascasse, 80 km/h — stop in the red box</td></tr>
+    <tr><td class="key">Pit lane</td><td id="helpPit">In on the right after Rascasse, 80 km/h — stop in the red box</td></tr>
     <tr><td class="key">On a phone</td><td>Roll the device to steer · gas &amp; brake under your right thumb · LEVEL re-centres</td></tr>
-    <tr><td class="key">On the grid</td><td>Click your laps, grid slot and rivals — or <kbd>L</kbd> <kbd>G</kbd> <kbd>K</kbd></td></tr>
+    <tr><td class="key">On the grid</td><td>Click your Grand Prix, laps, grid slot and rivals — or <kbd>P</kbd> <kbd>L</kbd> <kbd>G</kbd> <kbd>K</kbd></td></tr>
     <tr><td class="key"><kbd>Enter</kbd></td><td>Restart the race — or click RESTART</td></tr>
     <tr><td class="key"><kbd>R</kbd></td><td>Reset to track</td></tr>
     <tr><td class="key"><kbd>H</kbd></td><td>Toggle this card</td></tr>
@@ -334,6 +337,33 @@
    APEX GP — core drive build
    Everything you'd want to fiddle with lives in TUNE and TRACK_POINTS.
    ========================================================================== */
+
+// ---- which Grand Prix. Picked on the grid and remembered; it has to be known
+// before anything is built, because the whole world is made from the circuit.
+const GP_IDS = ['monaco', 'macau'];
+const GP_NAMES = { monaco: 'MONACO', macau: 'MACAU' };
+const GP_ID = (() => {
+  try {
+    if (GP_IDS.includes(window.GP_FORCE)) return window.GP_FORCE;
+    const q = new URLSearchParams(location.search).get('gp');
+    if (GP_IDS.includes(q)) return q;
+    const saved = localStorage.getItem('apexgp.gp');
+    if (GP_IDS.includes(saved)) return saved;
+  } catch (e) {}
+  return 'monaco';
+})();
+const IS_MACAU = GP_ID === 'macau';
+const GP = IS_MACAU
+  ? { gpName: 'Macau Grand Prix', title: 'Apex GP Macau', h1: 'Apex GP — Macau',
+      sub: 'Circuito da Guia, 6.12 km, 22 corners. A 20-car race from a standing start.',
+      pitHelp: 'In on the left through R Bend, 80 km/h — stop in the red box' }
+  : { gpName: 'Monaco Grand Prix', title: 'Apex GP Monaco', h1: 'Apex GP — Monaco',
+      sub: 'Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.',
+      pitHelp: 'In on the right after Rascasse, 80 km/h — stop in the red box' };
+document.title = GP.title;
+document.getElementById('helpTitle').textContent = GP.h1;
+document.getElementById('helpSub').textContent = GP.sub;
+document.getElementById('helpPit').textContent = GP.pitHelp;
 
 const TUNE = {
   // --- chassis ---
@@ -406,12 +436,100 @@ const TUNE = {
   kerbWidth:   1.2,
   wallOffset:  9.4,     // nominal only — real barrier line is wallAt(i)
 };
+// Macau is patched public road: the cockpit feels it.
+if (IS_MACAU) TUNE.cockpit.vibration = 0.009;
+
+// Circuito da Guia — the lap as mapped in OpenStreetMap (relation 8877949, the
+// route the Grand Prix uses), in metres, north up, starting on the line and
+// running clockwise. Only the joins between mapped roads were eased, and the
+// Melco hairpin given its real ~9.5 m radius, then scaled to the 6.12 km lap.
+const MACAU = {
+  length: 6120, samples: 2572, widthBonus: 0.5,
+  points: [
+    [699.0,-213.5], [687.2,-209.9], [675.4,-206.4], [663.6,-202.8], [651.8,-199.2], [639.9,-195.7], [628.1,-192.1], [616.4,-188.6],
+    [604.5,-185.0], [592.7,-181.4], [580.9,-177.8], [569.0,-174.2], [557.3,-170.6], [545.5,-167.1], [533.6,-163.5], [521.8,-160.0],
+    [510.1,-156.4], [498.2,-152.8], [486.4,-149.3], [474.5,-145.6], [462.7,-142.1], [451.0,-138.5], [439.3,-134.3], [428.3,-128.8],
+    [418.1,-121.9], [408.8,-113.7], [400.6,-104.5], [393.5,-94.5], [386.4,-84.4], [379.4,-74.2], [372.2,-64.1], [365.2,-54.0],
+    [358.1,-43.8], [351.1,-33.7], [343.9,-23.7], [336.9,-13.5], [329.8,-3.4], [322.8,6.7], [315.7,16.9], [308.6,27.0],
+    [301.5,37.0], [294.5,47.1], [287.4,57.3], [280.4,67.4], [273.2,77.5], [266.2,87.7], [259.1,97.7], [252.1,107.8],
+    [244.9,118.0], [237.9,128.1], [230.8,138.2], [223.8,148.4], [216.7,158.4], [209.6,168.5], [202.5,178.6], [195.5,188.8],
+    [188.4,198.9], [181.4,209.0], [174.2,219.1], [167.2,229.2], [160.1,239.3], [153.1,249.5], [145.9,259.6], [138.8,269.7],
+    [131.8,279.8], [124.7,289.9], [117.7,300.0], [110.5,310.1], [103.5,320.3], [96.4,330.4], [89.4,340.4], [82.2,350.6],
+    [75.2,360.7], [68.1,370.8], [61.1,381.0], [54.0,391.1], [46.9,401.1], [39.8,411.2], [32.8,421.4], [25.7,431.5],
+    [18.7,441.6], [11.5,451.8], [4.5,461.8], [-2.6,471.9], [-9.6,482.1], [-16.8,492.2], [-24.0,502.1], [-31.6,512.0],
+    [-39.4,521.4], [-47.8,530.5], [-56.8,538.9], [-66.3,546.8], [-76.4,553.9], [-87.0,560.3], [-97.8,566.2], [-108.8,571.7],
+    [-120.0,577.0], [-131.4,581.7], [-142.8,586.4], [-154.3,591.1], [-165.6,595.7], [-177.0,600.4], [-188.5,605.1], [-199.9,609.8],
+    [-211.3,614.5], [-222.8,619.2], [-234.2,623.8], [-245.5,628.5], [-257.0,633.1], [-268.4,637.8], [-279.9,642.6], [-291.3,647.2],
+    [-302.7,651.9], [-314.2,656.6], [-325.5,661.2], [-336.9,665.9], [-348.4,670.6], [-359.8,675.3], [-371.2,680.0], [-382.7,684.7],
+    [-394.1,689.3], [-405.5,694.0], [-416.9,698.6], [-428.3,703.3], [-439.7,708.1], [-451.2,712.7], [-462.6,717.4], [-474.0,722.1],
+    [-485.5,726.7], [-496.8,731.4], [-508.2,736.1], [-519.7,740.8], [-531.1,745.5], [-542.5,750.2], [-554.0,754.8], [-565.4,759.5],
+    [-576.8,764.1], [-588.2,768.8], [-599.6,773.6], [-611.1,778.2], [-622.5,782.9], [-633.9,787.6], [-645.4,792.2], [-656.7,796.9],
+    [-668.1,801.6], [-679.6,806.3], [-691.0,811.0], [-702.4,815.6], [-713.9,820.3], [-725.3,825.0], [-736.7,829.6], [-748.1,834.3],
+    [-759.5,839.1], [-770.9,843.7], [-782.4,848.4], [-793.8,853.1], [-805.2,857.7], [-816.7,862.3], [-826.7,864.5], [-834.7,863.5],
+    [-841.7,859.1], [-848.6,849.0], [-854.7,838.2], [-860.7,827.5], [-866.8,816.8], [-873.0,806.0], [-879.0,795.3], [-885.1,784.6],
+    [-891.1,773.8], [-897.2,763.0], [-903.3,752.3], [-909.4,741.6], [-915.2,730.6], [-917.3,720.7], [-914.8,708.7], [-909.8,697.4],
+    [-903.7,686.6], [-897.2,676.2], [-890.7,665.6], [-884.1,655.2], [-877.6,644.8], [-871.0,634.3], [-864.4,623.8], [-857.9,613.4],
+    [-851.3,602.9], [-844.8,592.5], [-837.5,582.5], [-829.2,573.3], [-820.2,564.9], [-811.1,556.7], [-801.9,548.4], [-792.8,540.0],
+    [-783.7,531.7], [-774.6,523.5], [-765.4,515.2], [-756.3,506.8], [-747.2,498.5], [-738.3,489.9], [-729.8,481.0], [-721.6,471.7],
+    [-713.8,462.2], [-706.4,452.3], [-699.4,442.1], [-692.4,431.9], [-685.4,421.8], [-678.4,411.7], [-671.4,401.4], [-664.8,391.1],
+    [-658.1,380.7], [-651.5,370.3], [-644.8,359.9], [-638.1,349.6], [-631.3,339.2], [-622.9,330.2], [-613.1,322.8], [-603.1,315.6],
+    [-592.1,309.9], [-580.9,305.0], [-569.6,299.8], [-558.8,293.9], [-548.3,287.4], [-537.9,280.7], [-528.1,273.2], [-522.3,264.8],
+    [-520.1,252.8], [-521.3,240.5], [-522.8,228.3], [-523.5,216.0], [-520.3,204.1], [-515.8,192.6], [-511.8,183.2], [-507.6,178.5],
+    [-501.9,176.4], [-489.7,177.2], [-477.5,178.9], [-465.2,180.5], [-453.0,182.3], [-440.8,184.6], [-429.1,188.3], [-417.4,192.0],
+    [-405.5,195.8], [-393.8,199.5], [-382.1,203.2], [-370.3,207.0], [-358.6,210.7], [-347.0,215.0], [-335.3,219.3], [-323.8,223.6],
+    [-312.2,227.8], [-300.3,231.1], [-288.0,231.4], [-276.0,228.6], [-265.2,222.8], [-256.1,214.5], [-249.5,204.1], [-245.2,192.6],
+    [-242.6,180.4], [-240.4,168.3], [-238.2,156.2], [-236.0,144.0], [-233.8,131.9], [-231.6,119.8], [-229.4,107.6], [-227.3,95.5],
+    [-225.0,83.4], [-221.1,71.6], [-214.2,61.5], [-204.6,53.7], [-193.5,48.4], [-181.8,44.7], [-170.0,41.0], [-158.2,37.4],
+    [-146.4,33.7], [-134.6,30.1], [-122.9,26.3], [-111.5,21.4], [-101.2,14.7], [-92.0,6.5], [-84.2,-3.0], [-77.9,-13.6],
+    [-72.8,-24.9], [-67.8,-36.2], [-62.6,-47.3], [-55.2,-57.2], [-45.4,-64.7], [-34.6,-70.6], [-23.8,-76.5], [-12.9,-82.4],
+    [-2.3,-88.7], [7.5,-96.2], [17.0,-104.1], [26.4,-112.1], [35.8,-120.1], [45.2,-128.1], [54.7,-136.0], [64.1,-143.9],
+    [73.5,-152.0], [82.1,-160.7], [88.8,-171.1], [93.9,-182.4], [97.6,-194.1], [97.2,-204.3], [92.3,-215.6], [85.2,-225.6],
+    [78.1,-235.7], [73.1,-247.0], [71.1,-259.1], [72.4,-271.3], [75.4,-283.4], [78.4,-295.3], [81.4,-307.2], [84.4,-319.3],
+    [86.3,-331.4], [86.6,-343.7], [85.6,-356.1], [84.1,-368.3], [82.5,-380.6], [80.8,-392.8], [79.2,-405.0], [77.6,-417.3],
+    [75.1,-429.3], [70.6,-440.8], [65.6,-452.1], [60.6,-463.3], [55.5,-474.6], [49.7,-485.5], [41.9,-495.1], [34.1,-504.6],
+    [25.2,-513.2], [18.1,-520.5], [13.8,-529.8], [13.5,-540.0], [17.6,-551.6], [23.1,-562.6], [28.6,-573.6], [34.2,-584.7],
+    [39.7,-595.7], [45.2,-606.7], [50.8,-617.8], [56.3,-628.8], [61.9,-639.8], [67.4,-650.9], [73.0,-661.9], [77.3,-668.8],
+    [81.9,-672.7], [93.8,-674.6], [106.0,-673.2], [118.4,-671.7], [130.6,-670.2], [142.8,-668.7], [155.1,-667.2], [167.3,-665.7],
+    [179.5,-664.1], [191.8,-662.6], [204.0,-661.1], [216.4,-659.8], [228.6,-659.3], [240.9,-660.2], [253.1,-662.5], [264.8,-666.2],
+    [276.0,-671.3], [286.8,-677.4], [297.5,-683.6], [308.1,-689.8], [318.8,-696.0], [329.4,-702.2], [339.2,-709.7], [344.9,-718.2],
+    [347.5,-728.1], [346.4,-738.2], [341.9,-747.5], [336.1,-753.2], [324.7,-757.7], [312.8,-760.8], [300.7,-763.5], [288.5,-765.2],
+    [276.1,-765.4], [263.8,-765.6], [251.5,-765.8], [239.1,-766.0], [226.8,-766.2], [214.5,-766.3], [202.1,-765.5], [190.0,-763.3],
+    [177.9,-760.6], [165.8,-758.4], [160.8,-758.9], [157.3,-761.0], [155.0,-764.5], [154.5,-768.5], [155.7,-772.4], [165.7,-779.3],
+    [177.1,-784.1], [188.5,-788.9], [199.8,-793.8], [211.1,-798.6], [222.5,-803.5], [234.1,-807.6], [246.3,-809.4], [258.7,-809.6],
+    [271.0,-809.6], [283.4,-809.6], [295.7,-809.7], [308.0,-809.7], [320.4,-809.7], [332.7,-809.7], [345.0,-809.7], [357.4,-810.0],
+    [369.7,-810.9], [382.0,-812.5], [394.1,-814.8], [406.1,-817.1], [418.3,-819.4], [430.4,-821.7], [442.5,-824.1], [454.7,-826.4],
+    [466.8,-828.7], [479.0,-831.0], [491.0,-833.3], [503.1,-835.6], [515.4,-837.4], [527.6,-839.1], [539.8,-840.6], [552.1,-842.2],
+    [564.3,-843.7], [576.6,-845.3], [588.8,-846.8], [601.0,-848.3], [613.3,-849.9], [625.6,-851.4], [637.8,-853.0], [650.0,-854.7],
+    [662.2,-856.8], [674.3,-859.1], [686.5,-861.3], [698.6,-863.6], [710.9,-864.6], [723.1,-862.9], [734.6,-858.7], [745.0,-852.1],
+    [753.6,-843.3], [760.2,-832.8], [762.2,-829.3], [767.9,-827.4], [770.7,-824.5], [774.5,-812.8], [778.0,-800.9], [781.5,-789.1],
+    [785.0,-777.3], [788.5,-765.4], [792.0,-753.6], [795.5,-741.8], [799.1,-729.9], [802.6,-718.2], [806.2,-706.3], [809.7,-694.5],
+    [813.2,-682.7], [816.7,-670.8], [820.2,-659.0], [823.8,-647.2], [827.3,-635.3], [830.8,-623.5], [834.3,-611.7], [837.8,-599.8],
+    [841.4,-588.0], [844.9,-576.2], [848.5,-564.4], [852.0,-552.6], [855.5,-540.7], [859.0,-528.9], [862.5,-517.1], [866.0,-505.2],
+    [869.5,-493.4], [873.2,-481.6], [876.7,-469.7], [880.2,-457.9], [883.7,-446.1], [887.2,-434.2], [890.7,-422.5], [894.2,-410.6],
+    [897.8,-398.8], [901.3,-387.0], [904.9,-375.1], [908.4,-363.3], [911.9,-351.5], [915.3,-339.6], [917.2,-327.4], [916.5,-315.2],
+    [913.4,-303.2], [907.9,-292.2], [900.2,-282.5], [890.9,-274.5], [880.1,-268.7], [868.3,-264.8], [856.5,-261.2], [844.7,-257.6],
+    [832.9,-254.1], [821.1,-250.5], [809.3,-246.9], [797.4,-243.3], [785.7,-239.7], [773.9,-236.2], [762.0,-232.6], [750.2,-229.0],
+    [738.4,-225.5], [726.6,-221.9], [714.8,-218.3], [702.9,-214.8],
+  ],
+  // Sea level along the Avenida da Amizade; the climb starts at Lisboa, tops out
+  // at Maternity, rolls round the hill and drops from Melco to Fisherman's.
+  elev: [[0, 3], [300, 3], [1118, 3.5], [1700, 4], [1944, 5], [2127, 7], [2350, 13], [2600, 23], [2812, 33], [3000, 31], [3088, 30], [3250, 27], [3423, 26], [3600, 27.5], [3800, 26.5], [3968, 26], [4185, 25], [4330, 26], [4474, 25.5], [4600, 25], [4695, 25], [4850, 22], [5050, 15], [5250, 8], [5333, 6], [5550, 3.5], [5876, 3], [6120, 3]],
+  // half-widths: the dual carriageway, narrowing up the hill to ~7 m at Melco
+  width: [[0, 6.5], [300, 6.5], [1000, 6.2], [1118, 6.0], [1800, 5.6], [1944, 5.4], [2050, 5.0], [2127, 4.6], [2400, 4.2], [2812, 3.8], [3088, 3.8], [3423, 3.4], [3700, 3.7], [3968, 3.9], [4185, 3.9], [4474, 3.8], [4600, 3.5], [4695, 3.1], [4790, 3.6], [5000, 4.2], [5333, 4.8], [5600, 5.4], [5876, 6.0], [6120, 6.5]],
+  land: [[-1450, -1400], [1250, -1400], [1350, -600], [1300, 400], [1150, 1150], [400, 1250], [-600, 1250], [-1450, 1150]],
+  guia: [-430.5, 60.5],      // the lighthouse on Guia Hill, inside the loop
+  lisboa: [-1078.4, 759.8],   // the Grand Lisboa, beyond Lisboa Bend
+  // Pit lane on the car's left, beside the sea: in through R Bend, garages either
+  // side of the line, back out after Reservoir Bend. Lap metres, as for Monaco.
+  pit: { start: 5850, join: 5960, split: 330, half: 3.9, edge: 1.2, wallOff: 1.7, taper: 18,
+         boxD: 6090, garageFrom: 5990, garageTo: 6190, limit: 80 / 3.6 },
+};
 
 // Circuit de Monaco — centreline traced from the official Wikipedia
 // track map (Monte_Carlo_Formula_1_track_map.svg), resampled to a
 // 3337 m lap. Corner order and radii match the real circuit.
-const LAP_LENGTH = 3337;
-const TRACK_POINTS = [
+const LAP_LENGTH = IS_MACAU ? MACAU.length : 3337;
+const TRACK_POINTS = IS_MACAU ? MACAU.points : [
   [-443.2,-1.8], [-435.5,-22.6], [-427.4,-43.3], [-418.7,-63.8], [-409.0,-83.8], [-397.9,-99.8],
   [-383.9,-117.1], [-369.7,-134.2], [-357.3,-152.6], [-344.7,-170.4], [-342.1,-171.4], [-339.4,-171.4],
   [-336.7,-170.7], [-334.2,-169.4], [-329.4,-166.6], [-319.2,-162.1], [-305.8,-158.5], [-284.1,-153.7],
@@ -458,18 +576,18 @@ const TRACK_POINTS = [
 
 // Street half-width by distance round the lap. Real Monaco is 8-12 m
 // wide; WIDTH_BONUS buys a little room back for keyboard driving.
-const WIDTH_BONUS = 0.9;
+const WIDTH_BONUS = IS_MACAU ? MACAU.widthBonus : 0.9;
 // Height above sea level by distance round the lap. Monaco climbs 42 m from
 // the harbour front to Casino Square and drops back down through Mirabeau and
 // the hairpin to Portier — onboard, that is most of the circuit's character.
-const ELEV_KEYS = [
+const ELEV_KEYS = IS_MACAU ? MACAU.elev : [
   [0,7], [197,11], [320,20], [450,31], [600,41], [700,47], [765,49],
   [900,47], [1050,43], [1121,40], [1254,33], [1346,27], [1429,16],
   [1560,11], [1700,9], [1975,8], [2077,7], [2375,7], [2556,7],
   [2692,7], [2912,7], [2998,9], [3150,8], [3337,7],
 ];
 
-const WIDTH_KEYS = [
+const WIDTH_KEYS = IS_MACAU ? MACAU.width : [
   [0,6.2],[150,6.0],[197,4.9],[320,5.2],[520,5.4],[700,5.2],[765,5.0],
   [900,4.9],[1050,4.7],[1121,4.6],[1254,4.4],[1346,4.6],[1429,4.9],
   [1560,5.8],[1800,6.2],[1980,5.6],[2077,5.0],[2200,5.4],[2375,5.0],
@@ -479,7 +597,7 @@ const WIDTH_KEYS = [
 
 
 
-const LAND_OUTLINE = [
+const LAND_OUTLINE = IS_MACAU ? MACAU.land : [
   [-694,359], [-699,316], [-705,237], [-705,200], [-703,146], [-679,2], [-660,-74], [-637,-142], [-543,-300], [578,-480], [704,-386], [705,-365], [696,-338], [618,-179], [607,-158], [588,-133], [572,-118], [-567,521], [-645,496], [-663,482],
 ];
 
@@ -579,14 +697,16 @@ const curve = new THREE.CatmullRomCurve3(
   TRACK_POINTS.map(p => new THREE.Vector3(p[0], 0, p[1])), true, 'centripetal'
 );
 
-const SAMPLES = 1400;   // ~2.4 m between samples on a 3337 m lap
+const SAMPLES = IS_MACAU ? MACAU.samples : 1400;   // ~2.4 m between samples either way
 
 // How hard to relax the traced centreline. The source map is stroked with a
 // thick line, so Monaco's fast kinks (Sainte Devote, Tabac, the Piscine) come
 // out of the trace far sharper than the real corners. This opens them back up
 // while leaving the genuinely tight corners — the hairpin, Rascasse — alone.
-const SMOOTH_PASSES = 90;
-const SMOOTH_KEEP_R = 15;    // corners tighter than this radius are protected
+// Macau comes from road geometry, which is already true to the corners; it only
+// needs the joins between mapped road segments easing, so fewer, gentler passes.
+const SMOOTH_PASSES = IS_MACAU ? 40 : 90;
+const SMOOTH_KEEP_R = IS_MACAU ? 22 : 15;    // corners tighter than this radius are protected
 
 const path = [];
 let trackLength = 0;
@@ -607,7 +727,7 @@ let trackLength = 0;
   // The Nouvelle Chicane is a genuinely sharp left-right (12 m then 20 m in the
   // trace). Those radii sit just above SMOOTH_KEEP_R, so the relax pass was
   // opening it into a lazy S-bend. Leave it exactly as traced.
-  for (let i = 0; i < SAMPLES; i++) {
+  for (let i = 0; i < SAMPLES && !IS_MACAU; i++) {
     const d = i / SAMPLES * LAP_LENGTH, inner = Math.min(d - 2040, 2170 - d);
     if (inner > -25) w[i] *= Math.min(1, Math.max(0, -inner / 25));
   }
@@ -662,6 +782,12 @@ function smoothWrap(arr, radius, passes) {
 // Elevation, smoothed hard so the gradient never kinks, then written into the
 // centreline itself — everything downstream reads its height from path[i].pos.y.
 const elev = smoothWrap(profileFrom(ELEV_KEYS, 0), 26, 4);
+// Macau is a public road, patched and re-patched: a ripple of small bumps on
+// top of the hill, felt through the car and seen from the cockpit.
+if (IS_MACAU) for (let i = 0; i < SAMPLES; i++) {
+  const s = i / SAMPLES * LAP_LENGTH;
+  elev[i] += 0.028 * Math.sin(s * 0.71 + 1.3) + 0.022 * Math.sin(s * 0.37 + 0.4) + 0.018 * Math.sin(s * 0.197 + 2.2);
+}
 for (let i = 0; i < SAMPLES; i++) path[i].pos.y = elev[i];
 
 // Gradient (rise per metre travelled) at each sample.
@@ -681,7 +807,7 @@ const halfW = profileFrom(WIDTH_KEYS, WIDTH_BONUS);
 // Barrier line, per side. A barrier offset larger than the corner's radius
 // turns the ribbon inside out — which is exactly how a car ends up on the
 // wrong side of a wall — so the inside of every corner is capped short of it.
-const WALL_GAP = 2.2;   // Monaco has almost no run-off — kerb, then Armco.
+const WALL_GAP = IS_MACAU ? 1.6 : 2.2;   // Monaco has almost no run-off — kerb, then Armco.
                         // Raise this if you want room to make a mistake.
 const wallPos = new Float32Array(SAMPLES);   // +normal side
 const wallNeg = new Float32Array(SAMPLES);   // -normal side
@@ -722,10 +848,10 @@ const inLapRange = (d, a, b) => a <= b ? d >= a && d <= b : d >= a || d <= b;   
 // It is an open bypass, as at the real corner: miss your braking, run straight
 // on across the painted tarmac, and it funnels you back onto the track. Nothing
 // across the end of it to hit, so `close` is long and gradual.
-const ESCAPE = { from: 2030, full: 2056, to: 2136, close: 52, width: 13 };
+const ESCAPE = IS_MACAU ? null : { from: 2030, full: 2056, to: 2136, close: 52, width: 13 };
 function escapeWidth(i) {
   const d = lapD(i);
-  if (d < ESCAPE.from || d > ESCAPE.to) return 0;
+  if (!ESCAPE || d < ESCAPE.from || d > ESCAPE.to) return 0;
   return ESCAPE.width * Math.min(smooth01((d - ESCAPE.from) / (ESCAPE.full - ESCAPE.from)),
                                  smooth01((ESCAPE.to - d) / ESCAPE.close));
 }
@@ -744,7 +870,7 @@ const wallAt = (i, side) => (side >= 0 ? wallPos[i] : wallNeg[i]);
    alongside the start straight behind a pit wall with the garages on the
    harbour side, and tapers back onto the inside of the track just before
    Sainte Dévote. Distances in PIT are lap metres on the main track.          */
-const PIT = {
+const PIT = IS_MACAU ? MACAU.pit : {
   start: 2943,        // lane leaves the track edge
   join: 3120,         // pit wall begins: lane now runs beside the straight
   split: 150,         // pit wall ends: lane tapers back onto the track
@@ -753,9 +879,11 @@ const PIT = {
   wallOff: 1.7,       // track edge -> pit wall centre beside the straight
   taper: 18,          // metres for the lane to open up and close down
   boxD: 3226, garageFrom: 3130, garageTo: 3322,
+  preJoin: 3097,      // round the inside of Anthony Noghès on a ~22 m arc (world metres, after the map)
+  arc: [[-447, 331], [-456.5, 327.5], [-463.2, 320.8], [-467.2, 311.5], [-470.2, 298], [-472.9, 280]],
   limit: 80 / 3.6,
 };
-const PIT_SIDE = 1;   // car's right: the inside of the circuit
+const PIT_SIDE = IS_MACAU ? -1 : 1;   // Monaco: the car's right, inside the loop. Macau: the left, by the sea
 
 function locatePit(x, z, seed) {
   const P = PITR.pts, N = P.length;
@@ -772,18 +900,23 @@ function locatePit(x, z, seed) {
 }
 
 const PITR = (() => {
-  const rel = (d, lat) => { const n = path[distSample(d)]; return new THREE.Vector3(n.pos.x + n.nrm.x * lat, 0, n.pos.z + n.nrm.z * lat); };
+  // lateral offsets here are measured away from the track, toward the pits
+  const rel = (d, lat) => { const n = path[distSample(d)], l = lat * PIT_SIDE; return new THREE.Vector3(n.pos.x + n.nrm.x * l, 0, n.pos.z + n.nrm.z * l); };
   const hw = d => halfW[distSample(d)];
   const beside = d => hw(d) + PIT.wallOff + 0.25 + PIT.half;       // lane centre behind the pit wall
   const ctl = [
     rel(PIT.start, hw(PIT.start) + PIT.edge + 0.5),
     rel(PIT.start + 8, hw(PIT.start + 8) + PIT.edge + 2.0),
-    // round the inside of Anthony Noghès on a ~22 m arc (world metres, after the map)
-    new THREE.Vector3(-447, 0, 331), new THREE.Vector3(-456.5, 0, 327.5),
-    new THREE.Vector3(-463.2, 0, 320.8), new THREE.Vector3(-467.2, 0, 311.5),
-    new THREE.Vector3(-470.2, 0, 298), new THREE.Vector3(-472.9, 0, 280),
-    rel(3097, beside(3097) + 0.7),
   ];
+  if (PIT.arc) {                       // Monaco: round Anthony Noghès
+    for (const [x, z] of PIT.arc) ctl.push(new THREE.Vector3(x, 0, z));
+    ctl.push(rel(PIT.preJoin, beside(PIT.preJoin) + 0.7));
+  } else {                             // Macau: follow the outside of R Bend out to the pit wall's line
+    for (let d = PIT.start + 20; d < PIT.join - 4; d += 12) {
+      const t = smooth01((d - PIT.start - 8) / (PIT.join - PIT.start - 8)), a = hw(d) + PIT.edge + 2.0;
+      ctl.push(rel(d, a + (beside(d) - a) * t));
+    }
+  }
   for (let d = PIT.join; d < LAP_LENGTH + PIT.split + 1; d += 25) ctl.push(rel(d, beside(d)));
   ctl.push(rel(PIT.split + 14, hw(PIT.split + 14) + PIT.edge + 4.2));
   ctl.push(rel(PIT.split + 27, hw(PIT.split + 27) + PIT.edge + 2.0));
@@ -831,14 +964,14 @@ const PITR = (() => {
   {
     let sd = distSample(PIT.start);
     for (const p of pts) {
-      const h = half(p.s), ex = p.pos.x - p.nrm.x * h, ez = p.pos.z - p.nrm.z * h;
+      const h = half(p.s), ex = p.pos.x - PIT_SIDE * p.nrm.x * h, ez = p.pos.z - PIT_SIDE * p.nrm.z * h;
       const l = locate(ex, ez, sd); sd = l.i;
-      if (l.lateral > wallPos[l.i] + 0.3) { sNose = p.s; noseD = lapD(l.i); break; }
+      if (PIT_SIDE * l.lateral > wallAt(l.i, PIT_SIDE) + 0.3) { sNose = p.s; noseD = lapD(l.i); break; }
     }
   }
   const out = {
     pts, L, half, pitAtMain,
-    boxLat: 1.95,                       // the box sits in the working lane
+    boxLat: 1.95 * PIT_SIDE,            // the box sits in the working lane, the garage side
     sNose, noseD,
     sJoin: sAtD(PIT.join),
     sSplit: sAtD(LAP_LENGTH + PIT.split),
@@ -850,13 +983,13 @@ const PITR = (() => {
   out.limitTo = out.sSplit;
   return out;
 })();
-// The track's right-hand barrier becomes the pit wall beside the straight.
-for (let i = 0; i < SAMPLES; i++) {
+// The track's barrier on the pit side becomes the pit wall beside the straight.
+for (let i = 0, wa = PIT_SIDE > 0 ? wallPos : wallNeg; i < SAMPLES; i++) {
   const d = lapD(i);
   if (!inLapRange(d, PIT.join - 30, PIT.split)) continue;
   const k = inLapRange(d, PIT.join - 30, PIT.join) ? smooth01((d - (PIT.join - 30)) / 30) : 1;
   const w = halfW[i] + PIT.wallOff - 0.25;
-  wallPos[i] = wallPos[i] + (w - wallPos[i]) * k;
+  wa[i] = wa[i] + (w - wa[i]) * k;
 }
 // Where the lane is open to the track the right barrier is the lane's own outer wall.
 const mainRightOpen = i => { const d = lapD(i); return inLapRange(d, PIT.start, PITR.noseD) || inLapRange(d, PIT.split, PITR.endD); };
@@ -985,7 +1118,7 @@ const M4 = (x, y, z, rx, ry, rz, sx, sy, sz) => new THREE.Matrix4().compose(
 // by a breakwater on the south-east. Quays are left wide enough for the Tabac,
 // Piscine and Rascasse stands and the Rainier III pool. (The pits sit inside the
 // loop, not water.)
-const HARBOUR_POLY = [
+const HARBOUR_POLY = IS_MACAU ? [] : [
   [-60,-5], [-105,-30], [-184,-60], [-262,-80], [-292,-80], [-312,-68], [-332,-42],
   [-343,-20], [-340,-1], [-318,25], [-310,60], [-310,140], [-330,165], [-406,182],
   [-406,240], [-398,280], [-382,305], [-370,334], [-392,372], [-426,378], [-446,380],
@@ -1075,8 +1208,8 @@ function distSample(d) {
 // straightens (~1860 m), leaving a ~200 m open straight downhill to the Nouvelle
 // Chicane — where the speed trap sits. Declared here because the terrain needs
 // it: the bore passes through a hillside.
-const TUNNEL = { i0: distSample(1505), i1: distSample(1860) };
-const inTunnel = i =>
+const TUNNEL = IS_MACAU ? null : { i0: distSample(1505), i1: distSample(1860) };
+const inTunnel = i => !!TUNNEL &&
   ((i - TUNNEL.i0 + SAMPLES) % SAMPLES) <= ((TUNNEL.i1 - TUNNEL.i0 + SAMPLES) % SAMPLES);
 function nearTrack(x, z, d) {
   const d2 = d * d;
@@ -1110,7 +1243,7 @@ for (let i = 0; i < SAMPLES; i += 3) {
 // The harbour basin sits a couple of metres below the quays, not down at the
 // open sea — otherwise the yachts hide below the barriers.
 const HARBOUR_WATER_Y = 5.0;
-{
+if (HARBOUR_POLY.length) {
   const shape = new THREE.Shape(HARBOUR_POLY.map(([x, z]) => new THREE.Vector2(x, -z)));
   const water = new THREE.Mesh(new THREE.ShapeGeometry(shape),
     new THREE.MeshPhongMaterial({ color: 0x1f6f96, shininess: 40, specular: 0x2b5a70, side: THREE.DoubleSide }));
@@ -1122,7 +1255,7 @@ const HARBOUR_WATER_Y = 5.0;
 /* ---------------------------------------------------------------- mountains */
 // Grey limestone ridges with green scrub rising behind the town, as in the
 // footage. North is -z (the map is traced north-up); fog hazes them into the sky.
-{
+if (!IS_MACAU) {
   const X0 = -1800, X1 = 1200, Z0 = -2400, Z1 = -640, STEP = 50;
   const nx = Math.round((X1 - X0) / STEP) + 1, nz = Math.round((Z1 - Z0) / STEP) + 1;
   const pos = [], col = [], idx = [];
@@ -1156,6 +1289,11 @@ const HARBOUR_WATER_Y = 5.0;
    harbour is punched out and skirted, so the quay is a real wall.
    ========================================================================= */
 
+// Guia Hill: the wooded hill inside the Macau loop, 90 m up at the lighthouse.
+// It only rises clear of the roads, which cut round its flanks on their own level.
+const HILL = IS_MACAU ? { x: MACAU.guia[0], z: MACAU.guia[1], r: 330, peak: 88 } : null;
+const inGuia = (x, z, pad) => !!HILL && Math.hypot(x - HILL.x, z - HILL.z) < HILL.r + (pad || 0);
+
 // samples used for the height blend — every 4th is plenty and keeps it quick
 const TSAMP = [];
 for (let i = 0; i < SAMPLES; i += 4) TSAMP.push({ p: path[i].pos, i });
@@ -1185,6 +1323,10 @@ function terrainY(x, z) {
   let h = near * (1 - t) + wide * t;
 
   if (ceil < Infinity) h = Math.min(h, ceil + 1.2);  // never bury a road
+  if (HILL) {
+    const r = Math.hypot(x - HILL.x, z - HILL.z) / HILL.r;
+    if (r < 1) h = Math.max(h, HILL.peak * Math.pow(1 - smooth01(r), 1.3) * smooth01((d - 30) / 70));
+  }
 
   // where the tunnel runs clear of everything else, put a hillside over it
   if (openTunnel && TSAMP[bi].i >= 0 && inTunnel(TSAMP[bi].i) && d > 26) {
@@ -1217,7 +1359,7 @@ function groundY(x, z) {
   const base = terrainY(x, z);
   // Inside the loop between the start straight and the pool road the pits and
   // paddock stand level with the track — no slope down toward the coast.
-  if (x < -330 && z > -180 && inPoly(x, z, trackPoly)) return base;
+  if (!IS_MACAU && x < -330 && z > -180 && inPoly(x, z, trackPoly)) return base;
   const fade = Math.min(1, edge / 170);
   const g = 0.4 + (base - 0.4) * fade * fade;
   return inHarbour(x, z, 45) ? Math.max(g, HARBOUR_WATER_Y + 1.6) : g;   // quays stand above the basin
@@ -1307,7 +1449,7 @@ const kerbMask = new Float32Array(SAMPLES);
     const ar = Math.abs((B.x - A.x) * (C.z - A.z) - (C.x - A.x) * (B.z - A.z)) / 2;
     const R = ar > 1e-6 ? (Math.hypot(B.x - A.x, B.z - A.z) * Math.hypot(C.x - B.x, C.z - B.z) *
                            Math.hypot(C.x - A.x, C.z - A.z)) / (4 * ar) : 1e9;
-    raw[i] = R < 140 && !inTunnel(i) ? 1 : 0;
+    raw[i] = R < (IS_MACAU ? 45 : 140) && !inTunnel(i) ? 1 : 0;   // Macau: only the tightest corners
   }
   for (let i = 0; i < SAMPLES; i++) {            // run each kerb on a little past the turn
     let m = 0;
@@ -1318,7 +1460,7 @@ const kerbMask = new Float32Array(SAMPLES);
   // red and white blocks either side of the flick. Keep them inside the Armco.
   for (let i = 0; i < SAMPLES; i++) {
     const d = lapD(i);
-    if (d > 2032 && d < 2178) kerbMask[i] = Math.max(kerbMask[i], 1) * 1.75;
+    if (!IS_MACAU && d > 2032 && d < 2178) kerbMask[i] = Math.max(kerbMask[i], 1) * 1.75;
   }
 }
 
@@ -1327,21 +1469,30 @@ const kerbMask = new Float32Array(SAMPLES);
 const ASPHALT = (() => {
   const c = document.createElement('canvas'); c.width = c.height = 512;
   const g = c.getContext('2d');
-  g.fillStyle = '#5c5f63'; g.fillRect(0, 0, 512, 512);
+  g.fillStyle = IS_MACAU ? '#56595d' : '#5c5f63'; g.fillRect(0, 0, 512, 512);
   const img = g.getImageData(0, 0, 512, 512), d = img.data;
   for (let i = 0; i < d.length; i += 4) {
     const n = (Math.random() - 0.5) * 62 + (Math.random() < 0.07 ? -44 : 0);
     d[i] += n; d[i + 1] += n; d[i + 2] += n;
   }
   g.putImageData(img, 0, 0);
-  for (let p = 0; p < 14; p++) {                       // resurfaced patches
+  for (let p = 0; p < (IS_MACAU ? 70 : 14); p++) {       // resurfaced patches
     const x = Math.random() * 512, y = Math.random() * 512, w = 60 + Math.random() * 150, h = 40 + Math.random() * 120;
-    g.fillStyle = `rgba(${Math.random() < 0.5 ? '40,42,45' : '128,130,133'},0.09)`;
+    g.fillStyle = `rgba(${Math.random() < 0.5 ? '40,42,45' : '128,130,133'},${IS_MACAU ? 0.15 : 0.09})`;
     g.fillRect(x, y, w, h);
   }
   g.strokeStyle = 'rgba(48,50,53,0.35)'; g.lineWidth = 2;
-  for (let k = 0; k < 3; k++) {                        // seams
+  for (let k = 0; k < (IS_MACAU ? 14 : 3); k++) {       // seams
     g.beginPath(); g.moveTo(Math.random() * 512, 0); g.lineTo(Math.random() * 512, 512); g.stroke();
+  }
+  if (IS_MACAU) {                                      // sealed cracks: the tar snakes of an old street
+    g.strokeStyle = 'rgba(26,27,29,0.55)'; g.lineWidth = 1.3;
+    for (let k = 0; k < 46; k++) {
+      let x = Math.random() * 512, y = Math.random() * 512;
+      g.beginPath(); g.moveTo(x, y);
+      for (let q = 0; q < 7; q++) { x += (Math.random() - 0.5) * 42; y += (Math.random() - 0.5) * 42; g.lineTo(x, y); }
+      g.stroke();
+    }
   }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
@@ -1385,9 +1536,14 @@ for (const s of [1, -1]) {
   };
   const unit = new THREE.PlaneGeometry(1, 1);
 
-  const dashes = new THREE.InstancedMesh(unit, markM, Math.ceil(SAMPLES / 4));
+  const dashes = new THREE.InstancedMesh(unit, markM, Math.ceil(SAMPLES / 4) * 2);
   let k = 0;
-  for (let i = 0; i < SAMPLES; i += 4) place(dashes, k++, i, 0, 0, 3.2, 0.16);
+  for (let i = 0; i < SAMPLES; i += 4) {
+    if (IS_MACAU && halfW[i] > 5.8) {                    // the dual carriageway keeps its lane lines
+      place(dashes, k++, i, 0, -halfW[i] / 3, 3.2, 0.16);
+      place(dashes, k++, i, 0, halfW[i] / 3, 3.2, 0.16);
+    } else place(dashes, k++, i, 0, 0, 3.2, 0.16);
+  }
   dashes.count = k; scene.add(dashes);
 
   // staggered grid slots behind the start line
@@ -1418,8 +1574,21 @@ const BOARD_STYLES = {
   dark:    { bg: '#2a2f36', fg: '#f39a1e', sub: '#c9ccd0', text: 'RIVIERA' },
   tunnel:  { bg: '#2c2f33', fg: '#b9bcc0', sub: '#7b7e82', text: '#MonacoGP' },
 };
+// Macau: yellow-and-black Armco nearly all the way round, a few sponsor runs.
+if (IS_MACAU) Object.assign(BOARD_STYLES, {
+  armco:      { bg: '#f2c230', stripes: '#17181a' },
+  green:      { bg: '#f2c230', fg: '#17181a', sub: '#17181a', text: 'MACAU GRAND PRIX' },
+  macau:      { bg: '#f2c230', fg: '#17181a', sub: '#17181a', text: 'MACAU GP' },
+  macauBlack: { bg: '#17181a', fg: '#f2c230', sub: '#f2c230', text: 'GUIA CIRCUIT' },
+  macauRed:   { bg: '#b3121f', fg: '#ffffff', sub: '#f2c230', text: '澳門格蘭披治大賽車' },
+  white:      { bg: '#f1f0ec', fg: '#17181a', sub: '#f2c230', text: 'MACAU GP' },
+  black:      { bg: '#17181a', fg: '#e9e9e9', sub: '#f2c230', text: '#MacauGP' },
+});
 // [from m, to m, style] for the car's left (-1) and right (+1) side
-const BOARD_SECTIONS = {
+const BOARD_SECTIONS = IS_MACAU ? {
+  '-1': [[1850,1990,'macauRed'],[3380,3480,'macauBlack'],[4600,4690,'macauBlack'],[5230,5330,'macauRed']],
+  '1':  [[0,300,'macauBlack'],[1060,1160,'macauBlack'],[2700,2860,'macauRed'],[4700,4800,'macauRed']],
+} : {
   '-1': [[0,197,'white'],[197,650,'green'],[650,900,'white'],[900,1420,'maroon'],
          [1420,1505,'dark'],[1505,1860,'tunnel'],[1860,2150,'black'],[2150,2450,'harbour'],
          [2450,2750,'green'],[2750,3000,'maroon'],[3000,3400,'white']],
@@ -1431,6 +1600,14 @@ function boardTexture(st) {
   const c = document.createElement('canvas'); c.width = 1024; c.height = 90;
   const g = c.getContext('2d');
   g.fillStyle = st.bg; g.fillRect(0, 0, 1024, 90);
+  if (st.stripes) {                        // Armco: alternate panels, with the rail's ribs
+    g.fillStyle = st.stripes;
+    for (let k = 1; k < 4; k += 2) g.fillRect(k * 256, 0, 256, 90);
+    g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(0, 24, 1024, 5); g.fillRect(0, 56, 1024, 5);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, 18, 1024, 4); g.fillRect(0, 50, 1024, 4);
+    const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.anisotropy = 4;
+    return t;
+  }
   g.fillStyle = st.sub; g.fillRect(0, 82, 1024, 8);
   g.fillStyle = st.fg; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = '800 58px Impact, "Arial Narrow", system-ui, sans-serif';
@@ -1445,9 +1622,9 @@ const BOARD_REPEAT = BOARD_H * 1024 / 90;       // metres of wall per texture ti
     const groups = {};
     for (let i = 0; i < SAMPLES; i++) {
       const d = path[i].s / trackLength * LAP_LENGTH;
-      if (sd === 1 && mainRightHidden(i)) continue;
+      if (sd === PIT_SIDE && mainRightHidden(i)) continue;
       const sec = BOARD_SECTIONS[sd].find(q => d >= q[0] && d < q[1]);
-      const key = sec ? sec[2] : 'white';
+      const key = sec ? sec[2] : IS_MACAU ? 'armco' : 'white';
       const G = groups[key] || (groups[key] = { pos: [], uv: [], idx: [] });
       const j = (i + 1) % SAMPLES, base = G.pos.length / 3;
       for (const k of [i, j]) {
@@ -1490,7 +1667,7 @@ const BOARD_REPEAT = BOARD_H * 1024 / 90;       // metres of wall per texture ti
     const pos = [], uv = [], idx = [];
     for (let i = 0; i < SAMPLES; i++) {
       const j = (i + 1) % SAMPLES;
-      if (inTunnel(i) || inTunnel(j) || (sd === 1 && (mainRightNearLane(i) || mainRightNearLane(j)))) continue;
+      if (inTunnel(i) || inTunnel(j) || (sd === PIT_SIDE && (mainRightNearLane(i) || mainRightNearLane(j)))) continue;
       const base = pos.length / 3;
       for (const k of [i, j]) {
         const n = path[k], o = sd * (wallAt(k, sd) + OFF), oi = sd * (wallAt(k, sd) + OFF - lx);
@@ -1522,7 +1699,7 @@ const BOARD_REPEAT = BOARD_H * 1024 / 90;       // metres of wall per texture ti
   for (let i = 0; i < SAMPLES; i += 3) {
     if (inTunnel(i)) continue;
     for (const sd of [1, -1]) {
-      if (sd === 1 && mainRightNearLane(i)) continue;
+      if (sd === PIT_SIDE && mainRightNearLane(i)) continue;
       const n = path[i], o = sd * (wallAt(i, sd) + OFF);
       dummy.position.set(n.pos.x + n.nrm.x * o, n.pos.y, n.pos.z + n.nrm.z * o);
       dummy.rotation.set(0, faceTrack(n, sd), 0);
@@ -1542,7 +1719,7 @@ const BOARD_REPEAT = BOARD_H * 1024 / 90;       // metres of wall per texture ti
   for (let i = 5; i < SAMPLES; i += 16) {
     if (inTunnel(i)) continue;
     const sd = ((i / 16) | 0) % 2 ? 1 : -1, n = path[i], o = sd * (wallAt(i, sd) + 1.5);
-    if (sd === 1 && mainRightNearLane(i)) continue;
+    if (sd === PIT_SIDE && mainRightNearLane(i)) continue;
     const gx =n.pos.x + n.nrm.x * o, gz = n.pos.z + n.nrm.z * o;
     if (groundY(gx, gz) < n.pos.y - 1.5) continue;
     dummy.position.set(gx, n.pos.y, gz);
@@ -1596,7 +1773,7 @@ const BOARD_REPEAT = BOARD_H * 1024 / 90;       // metres of wall per texture ti
   for (const i of spots) {
     const p = path[i];
     for (const s of [1, -1]) {
-      if (s === 1 && mainRightNearLane(i)) continue;   // the pit lane is there instead
+      if (s === PIT_SIDE && mainRightNearLane(i)) continue;   // the pit lane is there instead
       const po = s * (wallAt(i, s) + 1.6);
       if (groundY(p.pos.x + p.nrm.x * po, p.pos.z + p.nrm.z * po) < p.pos.y - 1.2) continue;
       for (let t = 0; t < per; t++) {
@@ -1629,7 +1806,7 @@ const BOARD_REPEAT = BOARD_H * 1024 / 90;       // metres of wall per texture ti
   const drainGeo = new THREE.PlaneGeometry(0.55, 0.9);
   for (let d = 60; d < LAP_LENGTH; d += 118) {                 // marshal post every ~120 m
     const i = distSample(d), n = path[i], sd = infieldSide(i);
-    if (inTunnel(i) || (sd === 1 && mainRightNearLane(i))) continue;
+    if (inTunnel(i) || (sd === PIT_SIDE && mainRightNearLane(i))) continue;
     const o = sd * (wallAt(i, sd) + 1.4);
     const x = n.pos.x + n.nrm.x * o, z = n.pos.z + n.nrm.z * o;
     if (groundY(x, z) < n.pos.y - 1.6 || inHarbour(x, z, 1)) continue;
@@ -1644,7 +1821,7 @@ const BOARD_REPEAT = BOARD_H * 1024 / 90;       // metres of wall per texture ti
   }
   for (let d = 150; d < LAP_LENGTH; d += 305) {                 // TV camera on a pole
     const i = distSample(d), n = path[i], sd = -infieldSide(i);
-    if (inTunnel(i) || (sd === 1 && mainRightNearLane(i))) continue;
+    if (inTunnel(i) || (sd === PIT_SIDE && mainRightNearLane(i))) continue;
     const o = sd * (wallAt(i, sd) + 1.1);
     const x = n.pos.x + n.nrm.x * o, z = n.pos.z + n.nrm.z * o;
     if (groundY(x, z) < n.pos.y - 1.6 || inHarbour(x, z, 1)) continue;
@@ -1682,7 +1859,7 @@ const START_LAMPS = [];     // one material per column of start lights, left to 
   scene.add(line);
 
   // gantry over the road
-  const gm = new THREE.MeshLambertMaterial({ color: 0x0d6a3c });
+  const gm = new THREE.MeshLambertMaterial({ color: IS_MACAU ? 0xf2c230 : 0x0d6a3c });
   const wR = wallAt(0, 1) + 0.7, wL = wallAt(0, -1) + 0.7, w = (wR + wL) / 2, mid = (wR - wL) / 2;
   const mx = n.pos.x + n.nrm.x * mid, mz = n.pos.z + n.nrm.z * mid;
   for (const o of [wR, -wL]) {
@@ -1718,7 +1895,7 @@ const START_LAMPS = [];     // one material per column of start lights, left to 
 }
 
 // Overhead sponsor banners, as on Beau Rivage and the run down to Mirabeau.
-for (const [d, key] of [[430, 'blue'], [1010, 'maroon']]) {
+for (const [d, key] of (IS_MACAU ? [[560, 'macau'], [1500, 'macauBlack'], [5480, 'macauRed']] : [[430, 'blue'], [1010, 'maroon']])) {
   const i = distSample(d), n = path[i];
   const wl = wallAt(i, -1) + 1.2, wr = wallAt(i, 1) + 1.2, W = wl + wr, mid = (wr - wl) / 2;
   const postM = new THREE.MeshLambertMaterial({ color: 0x3a3f46 });
@@ -1821,7 +1998,7 @@ function buildCrowd() {
 }
 
 /* ------------------------------------------------- Nouvelle Chicane run-off -- */
-{
+if (ESCAPE) {
   // Painted run-off: hatching across the escape road and a cross at the end,
   // as on the real thing, so the tarmac straight on reads as somewhere you
   // have already made a mistake.
@@ -1862,7 +2039,7 @@ let PIT_CREW = null;
   const strip = (inner, outer, y, col, lambert, from = 0, to = PITR.L) => {
     const pos = [], idx = [];
     for (let k = 0; k < NP; k++)
-      for (const o of [inner(k), outer(k)]) pos.push(P[k].pos.x + P[k].nrm.x * o, P[k].pos.y + y, P[k].pos.z + P[k].nrm.z * o);
+      for (const o of [PIT_SIDE * inner(k), PIT_SIDE * outer(k)]) pos.push(P[k].pos.x + P[k].nrm.x * o, P[k].pos.y + y, P[k].pos.z + P[k].nrm.z * o);
     for (let k = 0; k < NP - 1; k++)
       if (between(k, from, to) && between(k + 1, from, to)) { const a = k * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
     const g = new THREE.BufferGeometry();
@@ -1886,7 +2063,7 @@ let PIT_CREW = null;
       if (!between(k, from, to) || !between(k + 1, from, to)) continue;
       const base = pos.length / 3;
       for (const j of [k, k + 1]) {
-        const n = P[j], o = lat(j), x = n.pos.x + n.nrm.x * o, z = n.pos.z + n.nrm.z * o, u = n.s / BOARD_REPEAT * uSign;
+        const n = P[j], o = PIT_SIDE * lat(j), x = n.pos.x + n.nrm.x * o, z = n.pos.z + n.nrm.z * o, u = n.s / BOARD_REPEAT * uSign * PIT_SIDE;
         pos.push(x, n.pos.y, z, x, n.pos.y + BOARD_H, z); uv.push(u, 0, u, 1);
       }
       idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
@@ -1903,7 +2080,7 @@ let PIT_CREW = null;
   boards(k => -half(k), PITR.sNose, PITR.sJoin, 'black', 1);
 
   { // impact attenuator on the nose where the lane splits from the track
-    const k = at(PITR.sNose), n = P[k], o = -half(k) - 0.5;
+    const k = at(PITR.sNose), n = P[k], o = PIT_SIDE * (-half(k) - 0.5);
     const blk = new THREE.MeshLambertMaterial({ color: 0xd9621e });
     for (let r = 0; r < 3; r++) for (let h = 0; h < 2; h++) {
       const b = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.86, 1.0), blk);
@@ -1964,7 +2141,7 @@ let PIT_CREW = null;
     flat(k, 0, PITR.boxLat, 6.1, 2.9, 0xc8102e, 0.048);
   }
   { // PIT LANE 80 sign beyond the outer wall at the entry, facing traffic
-    const k = at(Math.max(4, PITR.sNose - 6)), n = P[k], o = half(k) + 3.2;
+    const k = at(Math.max(4, PITR.sNose - 6)), n = P[k], o = PIT_SIDE * (half(k) + 3.2);
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.3, 0.18), new THREE.MeshLambertMaterial({ color: 0x3a3f46 }));
     post.position.set(n.pos.x + n.nrm.x * o, n.pos.y + 1.65, n.pos.z + n.nrm.z * o); scene.add(post);
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.0), new THREE.MeshLambertMaterial({ side: THREE.DoubleSide,
@@ -1979,7 +2156,7 @@ let PIT_CREW = null;
     const roofM = new THREE.MeshLambertMaterial({ color: 0xc8c2b8 });
     const awnM = new THREE.MeshLambertMaterial({ color: 0xc8102e });
     for (let sv = G0; sv + SEG <= G1 + 0.5; sv += SEG) {
-      const k = at(sv + SEG / 2), n = P[k], o = half(k) + NEAR + DEPTH / 2;
+      const k = at(sv + SEG / 2), n = P[k], o = PIT_SIDE * (half(k) + NEAR + DEPTH / 2);
       const x = n.pos.x + n.nrm.x * o, z = n.pos.z + n.nrm.z * o;
       const seg = new THREE.Group();
       const body = new THREE.Mesh(new THREE.BoxGeometry(DEPTH, 7.5, SEG + 0.3), wallM);
@@ -1991,7 +2168,7 @@ let PIT_CREW = null;
       const roof = new THREE.Mesh(new THREE.BoxGeometry(DEPTH + 1.2, 0.6, SEG + 0.5), roofM);
       roof.position.set(0.2, 7.8, 0); seg.add(roof);
       seg.position.set(x, n.pos.y, z);
-      seg.rotation.y = -Math.atan2(n.tan.z, n.tan.x) - Math.PI / 2;
+      seg.rotation.y = -Math.atan2(n.tan.z, n.tan.x) - PIT_SIDE * Math.PI / 2;
       scene.add(seg);
       blockers.push({ x, z, r: 14, hard: true });
     }
@@ -1999,7 +2176,7 @@ let PIT_CREW = null;
   { // the crew: idle on the apron, around the car during a stop
     const k = at(PITR.sBox), n = P[k], lm = PITR.boxLat;
     const bx = n.pos.x + n.nrm.x * lm, bz = n.pos.z + n.nrm.z * lm;
-    const apron = half(k) + 1.5 - lm;
+    const apron = half(k) + 1.5 - Math.abs(lm);
     const suitM = new THREE.MeshLambertMaterial({ color: 0xc8102e }), helmM = new THREE.MeshLambertMaterial({ color: 0xf4f4f4 });
     const legM = new THREE.MeshLambertMaterial({ color: 0x1d1f23 });
     const WORK = [[1.75, 1.3], [1.75, -1.3], [-1.65, 1.35], [-1.65, -1.35], [3.35, 0], [-3.05, 0], [4.7, 1.2], [0.1, 2.0]];
@@ -2047,12 +2224,20 @@ function updateCrew(dt) {
 
 {
   const out = d => -infieldSide(distSample(d));
+  if (IS_MACAU) {
+    grandstand(30, 300, 1, 16, true);               // the main stand, across from the pits
+    grandstand(430, 900, -1, 14, true);             // Reservoir: the long stand down the straight
+    grandstand(1070, 1150, out(1110), 10, false);   // Mandarin
+    grandstand(1840, 1935, out(1890), 12, true);    // Lisboa
+    grandstand(5240, 5320, out(5280), 10, false);   // Fisherman's
+  } else {
   grandstand(25, 120, -1, 14, true);                // start/finish, across from the pits
   grandstand(560, 640, out(600), 12, true);         // Beau Rivage up to Massenet
   grandstand(2100, 2150, -1, 10, false);            // Nouvelle Chicane exit
   grandstand(2300, 2370, out(2335), 14, true);      // Tabac
   grandstand(2460, 2540, out(2500), 14, true);      // Piscine
   grandstand(2890, 2960, out(2925), 12, true);      // Rascasse
+  }
 }
 buildCrowd();
 
@@ -2060,7 +2245,7 @@ buildCrowd();
 // Rectangular and brightly lit like the real one: a tiled wall on the hillside
 // (right), open pillars toward the sea (left), a flat ceiling with rows of
 // lights, and a white building face over each portal.
-{
+if (TUNNEL) {
   const i0 = TUNNEL.i0, i1 = TUNNEL.i1;
   const span = (i1 - i0 + SAMPLES) % SAMPLES;
   const CEIL = 6.2, RW = 0.55, LW = 1.0;
@@ -2226,7 +2411,7 @@ function yacht(len, beam, tier) {
 }
 
 /* ------------------------------------------- Rainier III nautical stadium -- */
-{
+if (!IS_MACAU) {
   const i = distSample(2620), side = -infieldSide(i);
   const n = path[i], o = side * (wallAt(i, side) + 34);
   const px = n.pos.x + n.nrm.x * o, pz = n.pos.z + n.nrm.z * o;
@@ -2246,6 +2431,66 @@ function yacht(len, beam, tier) {
   g.position.set(px, Math.max(0.6, groundY(px, pz) - 0.5), pz); g.rotation.y = ang;
   scene.add(g);
   blockers.push({ x: px, z: pz, r: 58 });
+}
+
+/* ------------------------------------------------------- Macau landmarks -- */
+// The lighthouse and chapel in Guia Fortress on top of the hill, the Grand
+// Lisboa's gold lotus beyond Lisboa Bend, and the white storage tanks behind the
+// barriers on the climb out of it.
+if (IS_MACAU) {
+  {
+    const [hx, hz] = MACAU.guia, gy = groundY(hx, hz);
+    const white = new THREE.MeshLambertMaterial({ color: 0xf1efe8 }), g = new THREE.Group();
+    const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+    add(new THREE.CylinderGeometry(2.2, 2.8, 14, 16), white, 0, 7, 0);
+    add(new THREE.CylinderGeometry(3.2, 3.2, 0.5, 16), white, 0, 14.2, 0);
+    add(new THREE.CylinderGeometry(1.6, 1.6, 2.4, 12), new THREE.MeshStandardMaterial({ color: 0xcfe6ee, metalness: 0.3, roughness: 0.15 }), 0, 15.7, 0);
+    add(new THREE.ConeGeometry(2.0, 1.8, 12), new THREE.MeshLambertMaterial({ color: 0xb23a2a }), 0, 17.8, 0);
+    add(new THREE.BoxGeometry(14, 7, 7), white, 13, 3.5, 4);                                  // the chapel
+    add(new THREE.ConeGeometry(8, 3, 4), new THREE.MeshLambertMaterial({ color: 0xa85a3e }), 13, 8.5, 4).rotation.y = Math.PI / 4;
+    add(new THREE.CylinderGeometry(34, 36, 5, 28, 1, true), new THREE.MeshLambertMaterial({ color: 0xd8cdb4, side: THREE.DoubleSide }), 0, 1.5, 0);
+    g.position.set(hx, gy - 0.5, hz);
+    scene.add(g);
+    blockers.push({ x: hx, z: hz, r: 40, hard: true });
+  }
+  {
+    const [lx, lz] = MACAU.lisboa, gy = groundY(lx, lz);
+    const gold = new THREE.MeshStandardMaterial({ color: 0xd9a93b, metalness: 0.85, roughness: 0.28 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0x8c6f36, metalness: 0.7, roughness: 0.2 });
+    const g = new THREE.Group();
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(34, 28, 18, 0, Math.PI * 2, 0, Math.PI * 0.62), gold);
+    dome.position.y = 6; g.add(dome);                                     // the egg-shaped podium
+    const H = 238, STAGES = 12;                                            // the tower flares as it rises
+    for (let k = 0; k < STAGES; k++) {
+      const t0 = k / STAGES, t1 = (k + 1) / STAGES;
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(16 + 14 * Math.pow(t1, 2.2), 16 + 14 * Math.pow(t0, 2.2), H / STAGES - 0.8, 8), k % 2 ? gold : glass);
+      seg.position.y = 20 + (t0 + 0.5 / STAGES) * H; g.add(seg);
+    }
+    for (let p = 0; p < 10; p++) {                                        // the crown of petals
+      const a = p / 10 * Math.PI * 2, petal = new THREE.Mesh(new THREE.ConeGeometry(5.5, 34, 4), gold);
+      petal.position.set(Math.cos(a) * 24, 20 + H + 12, Math.sin(a) * 24);
+      petal.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
+      g.add(petal);
+    }
+    g.position.set(lx, gy - 1, lz);
+    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    scene.add(g);
+    blockers.push({ x: lx, z: lz, r: 55, hard: true });
+  }
+  {
+    const tankM = new THREE.MeshLambertMaterial({ color: 0xe9e7e1 });
+    for (const [d, off, r, h] of [[2180, 30, 13, 11], [2235, 26, 10, 9], [2205, 58, 12, 12]]) {
+      const i = distSample(d), n = path[i], sd = -infieldSide(i), o = sd * (wallAt(i, sd) + off);
+      const x = n.pos.x + n.nrm.x * o, z = n.pos.z + n.nrm.z * o;
+      if (blocked(x, z, r) || nearTrack(x, z, r + 9)) continue;
+      const y = groundY(x, z) - 0.3;
+      const tank = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 28), tankM);
+      tank.position.set(x, y + h / 2, z); tank.castShadow = true; scene.add(tank);
+      const lid = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 8, 0, Math.PI * 2, 0, 0.35), tankM);
+      lid.position.set(x, y + h - r * Math.cos(0.35), z); scene.add(lid);
+      blockers.push({ x, z, r: r + 6, hard: true });
+    }
+  }
 }
 
 /* -------------------------------------------------------------- buildings -- */
@@ -2282,6 +2527,20 @@ function towerTex() {
   }
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
 }
+// Macau's residential blocks: a concrete grid of windows with air conditioners.
+function apartmentTex() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#d9d4c8'; g.fillRect(0, 0, 128, 128);
+  for (let fl = 0; fl < 8; fl++) for (let w = 0; w < 4; w++) {
+    const x0 = 5 + w * 31, y0 = 3 + fl * 16;
+    g.fillStyle = '#4c5a63'; g.fillRect(x0, y0, 20, 9);
+    g.fillStyle = 'rgba(255,255,255,0.5)'; g.fillRect(x0, y0 + 9, 20, 2);
+    if ((fl * 7 + w * 3) % 5 === 0) { g.fillStyle = '#eeeeea'; g.fillRect(x0 + 21, y0 + 3, 6, 5); }
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+const APART_TEX = IS_MACAU ? apartmentTex() : null;
 const FACADES = [
   facadeTex('#efe3c8', '#4f7a57', '#fbf7ee'), facadeTex('#e8b9a3', '#f4efe6', '#fbf2ea'),
   facadeTex('#e5c78f', '#6b8a6f', '#f6ecd6'), facadeTex('#f2efe8', '#8aa0a8', '#ffffff'),
@@ -2295,10 +2554,11 @@ const TILE_M = new THREE.MeshStandardMaterial({ color: 0xa85a3e, roughness: 0.85
 function building(x, z, w, d, h, fi) {
   const ROOF_M = ROOFS[Math.floor(Math.random() * ROOFS.length)];
   const tall = h > 38;                 // up the hill stays Belle Epoque; only the real towers go modern
-  const tex = (tall ? TOWER_TEX : FACADES[fi]).clone();
+  const apart = IS_MACAU && Math.random() < (h < 90 ? 0.75 : 0.2);
+  const tex = (apart ? APART_TEX : tall ? TOWER_TEX : FACADES[fi]).clone();
   tex.needsUpdate = true;
-  tex.repeat.set(Math.max(1, Math.round(w / (tall ? 8 : 7.5))),
-                 Math.max(1, Math.round((h + 6) / (tall ? 12.8 : 6.8))));
+  tex.repeat.set(Math.max(1, Math.round(w / (apart ? 6.2 : tall ? 8 : 7.5))),
+                 Math.max(1, Math.round((h + 6) / (apart ? 24 : tall ? 12.8 : 6.8))));
   // render stone and render-and-glass alike pick up a little sky
   const side = new THREE.MeshStandardMaterial({ map: tex, roughness: tall ? 0.45 : 0.8, metalness: tall ? 0.15 : 0.0 });
   const mats = [side, side, ROOF_M, ROOF_M, side, side];
@@ -2319,8 +2579,9 @@ function building(x, z, w, d, h, fi) {
 {
   const placed = [];
   const cands = [];
-  for (let gx = -760; gx <= 760; gx += 16)
-    for (let gz = -600; gz <= 620; gz += 16)
+  const [BX0, BX1, BZ0, BZ1, BS] = IS_MACAU ? [-1400, 1300, -1350, 1200, 20] : [-760, 760, -600, 620, 16];
+  for (let gx = BX0; gx <= BX1; gx += BS)
+    for (let gz = BZ0; gz <= BZ1; gz += BS)
       cands.push([gx + (Math.random() - 0.5) * 11, gz + (Math.random() - 0.5) * 11]);
   // shuffle so the keepers are spread around
   for (let i = cands.length - 1; i > 0; i--) {
@@ -2329,26 +2590,29 @@ function building(x, z, w, d, h, fi) {
   }
   let made = 0;
   for (const [x, z] of cands) {
-    if (made >= 360) break;
-    const w = 11 + Math.random() * 17, d = 11 + Math.random() * 17;
+    if (made >= (IS_MACAU ? 430 : 360)) break;
+    const w = (IS_MACAU ? 16 : 11) + Math.random() * 17, d = (IS_MACAU ? 16 : 11) + Math.random() * 17;
     const foot = Math.max(w, d) * 0.72;
     if (!inPoly(x, z, LAND_OUTLINE)) continue;
     if (inHarbour(x, z, 12 + foot)) continue;
     if (nearTrack(x, z, 10.5 + foot)) continue;  // right up behind the Armco
     if (blocked(x, z, foot)) continue;
+    if (inGuia(x, z, foot + 12)) continue;            // Guia Hill is parkland
     if (placed.some(p => Math.hypot(p[0] - x, p[1] - z) < 17)) continue;
     // taller up the hill behind Casino Square, lower near the water
     const hill = Math.max(0, Math.min(1, (-z + 60) / 340));
     // inside the loop behind the pits it's the paddock: low team hospitality units
     const paddock = x < -330 && z > -180 && inPoly(x, z, trackPoly);
-    const h = paddock ? 4.5 + Math.random() * 3.5 : 11 + Math.random() * 16 + hill * 22;
+    const h = IS_MACAU ? (Math.random() < 0.3 ? 70 + Math.random() * 85 : 26 + Math.random() * 42)   // towers and 10-20 storey blocks
+      : paddock ? 4.5 + Math.random() * 3.5 : 11 + Math.random() * 16 + hill * 22;
     building(x, z, w, d, h, Math.floor(Math.random() * FACADES.length));
     placed.push([x, z]); made++;
+    if (IS_MACAU) blockers.push({ x, z, r: foot + 2 });   // keep the trees out of them
   }
 }
 
 /* ------------------------------------------------ Casino de Monte-Carlo ---- */
-{
+if (!IS_MACAU) {
   const stone = new THREE.MeshLambertMaterial({ color: 0xe6dcc0 });
   const roofM = new THREE.MeshLambertMaterial({ color: 0x5c6b6e });
   const gold  = new THREE.MeshPhongMaterial({ color: 0xd6b24a, shininess: 140, specular: 0xffe9a8 });
@@ -2382,7 +2646,7 @@ function building(x, z, w, d, h, fi) {
 }
 
 /* ------------------------------------------------------------- palm trees -- */
-{
+if (!IS_MACAU) {
   const trunkGeo = mergeGeos([
     { geo: new THREE.CylinderGeometry(0.28, 0.46, 7.5, 7), matrix: M4(0, 3.75, 0, 0, 0, 0.06) },
   ]);
@@ -2436,6 +2700,67 @@ function building(x, z, w, d, h, fi) {
     trunks.setMatrixAt(k, m); fronds.setMatrixAt(k, m);
   });
   scene.add(trunks, fronds);
+}
+
+/* --------------------------------------------------- Macau: trees and hills -- */
+if (IS_MACAU) {
+  { // woods on Guia Hill and street trees behind the fences: trunk and three crowns
+    const trunkG = new THREE.CylinderGeometry(0.22, 0.34, 4.2, 6); trunkG.translate(0, 2.1, 0);
+    const crownG = mergeGeos([
+      { geo: new THREE.IcosahedronGeometry(2.6, 0), matrix: M4(0, 5.6, 0) },
+      { geo: new THREE.IcosahedronGeometry(2.0, 0), matrix: M4(1.5, 4.9, 0.6) },
+      { geo: new THREE.IcosahedronGeometry(1.9, 0), matrix: M4(-1.2, 5.0, -0.9) },
+    ]);
+    const spots = [];
+    for (let t = 0; t < 6000 && spots.length < 1500; t++) {
+      const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * HILL.r * 0.95;
+      const x = HILL.x + Math.cos(a) * r, z = HILL.z + Math.sin(a) * r;
+      if (nearTrack(x, z, 15) || blocked(x, z, 2.5)) continue;
+      spots.push([x, z, 0.8 + Math.random() * 0.6]);
+    }
+    for (let i = 0; i < SAMPLES; i += 9) for (const sd of [1, -1]) {
+      if (Math.random() > 0.35 || (sd === PIT_SIDE && mainRightNearLane(i))) continue;
+      const p = path[i], o = sd * (wallAt(i, sd) + 3.6 + Math.random() * 2.5);
+      const x = p.pos.x + p.nrm.x * o, z = p.pos.z + p.nrm.z * o;
+      if (!inPoly(x, z, LAND_OUTLINE) || groundY(x, z) < p.pos.y - 2.5 || blocked(x, z, 3) || nearTrack(x, z, 9)) continue;
+      spots.push([x, z, 0.7 + Math.random() * 0.4]);
+    }
+    const trunks = new THREE.InstancedMesh(trunkG, new THREE.MeshLambertMaterial({ color: 0x5b4a3a }), spots.length);
+    const crowns = new THREE.InstancedMesh(crownG, new THREE.MeshLambertMaterial({ color: 0xffffff }), spots.length);
+    const shade = new THREE.Color();
+    spots.forEach(([x, z, sc], k) => {
+      const m = M4(x, groundY(x, z) - 0.2, z, 0, Math.random() * 6.28, 0, sc, sc, sc);
+      trunks.setMatrixAt(k, m); crowns.setMatrixAt(k, m);
+      crowns.setColorAt(k, shade.setHSL(0.26 + Math.random() * 0.07, 0.4, 0.24 + Math.random() * 0.1));
+    });
+    if (crowns.instanceColor) crowns.instanceColor.needsUpdate = true;
+    crowns.castShadow = true;
+    scene.add(trunks, crowns);
+  }
+  { // Taipa's hills across the water to the south, Zhuhai's to the west
+    const ridge = (X0, X1, Z0, Z1, peak, across) => {
+      const STEP = 60, nx = Math.round((X1 - X0) / STEP) + 1, nz = Math.round((Z1 - Z0) / STEP) + 1;
+      const pos = [], col = [], idx = [];
+      const scrub = new THREE.Color(0x587548), rock = new THREE.Color(0x8d8a7e), c = new THREE.Color();
+      for (let r = 0; r < nz; r++) for (let q = 0; q < nx; q++) {
+        const x = X0 + q * STEP, z = Z0 + r * STEP, t = Math.min(1, Math.max(0, across(x, z)));
+        const n = Math.sin(x * 0.005 + z * 0.003) * 0.5 + Math.sin(x * 0.013 - z * 0.009) * 0.3 + Math.sin(x * 0.029 + z * 0.021) * 0.2;
+        const y = Math.sin(Math.PI * t) * peak * (0.75 + 0.35 * n) - 4;
+        pos.push(x, y, z);
+        c.copy(scrub).lerp(rock, Math.min(1, Math.max(0, y / (peak * 1.2)))); col.push(c.r, c.g, c.b);
+      }
+      for (let r = 0; r < nz - 1; r++) for (let q = 0; q < nx - 1; q++) {
+        const a = r * nx + q, b = a + 1, d = a + nx, e = d + 1; idx.push(a, d, b, b, d, e);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      g.setIndex(idx); g.computeVertexNormals();
+      scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })));
+    };
+    ridge(-1800, 1900, 1750, 2800, 170, (x, z) => (z - 1750) / 1050);
+    ridge(-3000, -1800, -1600, 1400, 240, (x, z) => (-1800 - x) / 1200);
+  }
 }
 
 /* --------------------------------------------------------------- the car */
@@ -2869,7 +3194,8 @@ const COMPOUNDS = [
 ];
 // gripLoss: how much grip is gone when the tyres are finished — it costs traction
 // out of corners, braking and cornering, so a dead set is seconds a lap slower.
-const TYRE_WEAR = { perMetre: 3.2e-5, perSlip: 5e-4, gripLoss: 0.26 };   // mediums ~9 laps
+// perMetre is set per lap, so a set of mediums lasts ~9 laps at either circuit
+const TYRE_WEAR = { perMetre: 3.2e-5 * 3337 / LAP_LENGTH, perSlip: 5e-4, gripLoss: 0.26 };
 const PIT_STOP_TIME = 2.6;
 const tyreGrip = () => COMPOUNDS[S.tyre].grip * (1 - TYRE_WEAR.gripLoss * Math.pow(S.wear, 1.5));
 
@@ -2930,6 +3256,16 @@ const AI_LEVELS = [            // a clean lap on their own: ~110 s, ~100 s, ~92 
 ];
 const RACE = { laps: 5, grid: 9, level: 2, phase: 'grid', t: 0, armed: false, lights: 0, hold: 0,
                clock: 0, leaderDone: false, results: [], flashText: '', flashUntil: 0, pen: 0 };
+try {                                  // settings carried across a change of Grand Prix
+  const saved = JSON.parse(localStorage.getItem('apexgp.race') || 'null');
+  if (saved) {
+    localStorage.removeItem('apexgp.race');
+    if (RACE_LAP_CHOICES.includes(saved.laps)) RACE.laps = saved.laps;
+    if (saved.level >= 0 && saved.level < AI_LEVELS.length) RACE.level = saved.level;
+    if (saved.grid >= 0 && saved.grid < RACE_CARS) RACE.grid = saved.grid;
+    document.getElementById('help').classList.add('hidden');   // they have already read it
+  }
+} catch (e) {}
 // Ten teams, two cars each; the player drives for the first.
 const TEAMS = [
   { paint: 0xc8102e, white: 0xf4f4f6, accent: 0xffd23f },
@@ -3157,6 +3493,21 @@ function setupRace() {
   towerEl.innerHTML = CARS.map(() => '<div class="tr"><b></b><i></i><span></span><em></em></div>').join('');
   camSnap = true;
 }
+// A different circuit means a different world, so changing Grand Prix reloads the
+// page: remember the choice and the race settings, and come back on its grid.
+function switchGP(id) {
+  if (id === GP_ID || !GP_IDS.includes(id)) return;
+  try {
+    localStorage.setItem('apexgp.gp', id);
+    localStorage.setItem('apexgp.race', JSON.stringify({ laps: RACE.laps, level: RACE.level, grid: RACE.grid }));
+  } catch (e) {}
+  try {
+    const u = new URL(location.href);
+    if (!/^(https?|file):$/.test(u.protocol)) throw 0;
+    u.searchParams.set('gp', id);
+    location.href = u.toString();
+  } catch (e) { location.reload(); }
+}
 /* --- the setup panel on the grid: click your laps, slot and rivals ---------- */
 const setupEl = document.getElementById('setup'), lapOptsEl = document.getElementById('lapOpts');
 const aiOptsEl = document.getElementById('aiOpts'), gridValEl = document.getElementById('gridVal');
@@ -3171,6 +3522,9 @@ function updateSetupUI() {
   const click = (el, fn) => el.addEventListener('click', e => { fn(e); e.currentTarget.blur(); });
   lapOptsEl.innerHTML = RACE_LAP_CHOICES.map(n => `<button class="btn" data-laps="${n}">${n}</button>`).join('');
   aiOptsEl.innerHTML = AI_LEVELS.map((l, k) => `<button class="btn" data-ai="${k}">${l.name}</button>`).join('');
+  const gpOptsEl = document.getElementById('gpOpts');
+  gpOptsEl.innerHTML = GP_IDS.map(id => `<button class="btn${id === GP_ID ? ' on' : ''}" data-gp="${id}">${GP_NAMES[id]}</button>`).join('');
+  click(gpOptsEl, e => { const b = e.target.closest('button'); if (b) switchGP(b.dataset.gp); });
   click(lapOptsEl, e => { const b = e.target.closest('button'); if (b) { RACE.laps = +b.dataset.laps; reGrid(); b.blur(); } });
   click(aiOptsEl, e => { const b = e.target.closest('button'); if (b) { RACE.level = +b.dataset.ai; reGrid(); b.blur(); } });
   click(document.getElementById('gridDown'), () => { RACE.grid = (RACE.grid + RACE_CARS - 1) % RACE_CARS; reGrid(); });
@@ -3184,6 +3538,7 @@ function updateSetupUI() {
 }
 function raceKey(code) {
   if (code === 'Enter' && RACE.phase !== 'grid' && RACE.phase !== 'lights') { setupRace(); RACE.armed = true; return; }
+  if (RACE.phase === 'grid' && code === 'KeyP') { switchGP(GP_IDS[(GP_IDS.indexOf(GP_ID) + 1) % GP_IDS.length]); return; }
   if (RACE.phase === 'grid' && (code === 'KeyL' || code === 'KeyG' || code === 'KeyK')) {
     if (code === 'KeyL') RACE.laps = RACE_LAP_CHOICES[(RACE_LAP_CHOICES.indexOf(RACE.laps) + 1) % RACE_LAP_CHOICES.length];
     if (code === 'KeyG') RACE.grid = (RACE.grid + 1) % RACE_CARS;
@@ -3505,7 +3860,7 @@ function updateResults(force) {
     const t = !c.done ? 'RUNNING' : c === win ? fmt(c.finishT * 1000) : gapText(c, win);
     return `<tr class="${c.isPlayer ? 'me' : ''}"><td>${n + 1}</td><td><i style="background:${c.color}"></i>${c.code}</td><td>${t}</td></tr>`;
   }).join('');
-  resultsEl.innerHTML = `<h1>Monaco Grand Prix</h1><p class="sub">${RACE.laps} laps · AI ${AI_LEVELS[RACE.level].name}</p>` +
+  resultsEl.innerHTML = `<h1>${GP.gpName}</h1><p class="sub">${RACE.laps} laps · AI ${AI_LEVELS[RACE.level].name}</p>` +
                         `<table>${rows}</table><div class="go"><button class="btn" id="againBtn">RACE AGAIN</button></div>`;
 }
 function updateRaceHUD() {
@@ -3819,7 +4174,7 @@ function step(dt) {
   const wasOn = S.onTrack;
   S.inLane = onPitRoad && ploc.s >= PITR.limitFrom && ploc.s <= PITR.limitTo;
   S.onTrack = onPitRoad || Math.abs(loc.lateral) < halfW[loc.i] + T.kerbWidth * 0.9;
-  if (!S.onTrack && loc.lateral > 0 && mainRightOpen(loc.i)) {     // on the lane where it meets the track
+  if (!S.onTrack && loc.lateral * PIT_SIDE > 0 && mainRightOpen(loc.i)) {     // on the lane where it meets the track
     const sd = PITR.pitAtMain[loc.i], pl = locatePit(S.x, S.z, sd >= 0 ? sd : null);
     if (pl.s > 0 && pl.s < PITR.L && Math.abs(pl.lateral) < PITR.half(pl.s) + 0.4) S.onTrack = true;
   }
@@ -3976,7 +4331,7 @@ function step(dt) {
     post = locate(S.x, S.z, S.seg);
     S.seg = post.i;
     const limit = wallAt(post.i, post.lateral) - 0.9;
-    if (Math.abs(post.lateral) > limit && !(post.lateral > 0 && mainRightOpen(post.i))) {
+    if (Math.abs(post.lateral) > limit && !(post.lateral * PIT_SIDE > 0 && mainRightOpen(post.i))) {
       const dir = Math.sign(post.lateral);
       // Rate-limited: where the circuit folds back on itself — the chicane, with
       // its wide run-off — the nearest centreline sample can be the one across
@@ -4016,10 +4371,10 @@ function step(dt) {
     if (S.road === 'pit' || sd >= 0) {
       if (!pl) { pl = locatePit(S.x, S.z, sd); S.pseg = pl.i; }
       if (pl.s > 0 && pl.s < PITR.L) {
-        const h = PITR.half(pl.s), lim = h - 0.9;
-        if (pl.lateral > lim && pl.lateral < h + 2.0) pitWallPush(pl, lim - pl.lateral, dt);
+        const h = PITR.half(pl.s), lim = h - 0.9, ls = pl.lateral * PIT_SIDE;   // + away from the track
+        if (ls > lim && ls < h + 2.0) pitWallPush(pl, PIT_SIDE * (lim - ls), dt);
         else if (S.road === 'pit' && pl.s >= PITR.sNose && pl.s <= PITR.sSplit &&
-                 pl.lateral < -lim && pl.lateral > -h - 2.0) pitWallPush(pl, -lim - pl.lateral, dt);
+                 ls < -lim && ls > -h - 2.0) pitWallPush(pl, PIT_SIDE * (-lim - ls), dt);
       }
       pl = locatePit(S.x, S.z, S.pseg); S.pseg = pl.i;
       const h = PITR.half(pl.s);
@@ -4027,7 +4382,7 @@ function step(dt) {
       if (pl.s > PITR.sNose && pl.s < PITR.sSplit) S.road = onLane ? 'pit' : 'main';
       else {                                   // open to the track: past the lane's edge line and off the track
         const m = post || locate(S.x, S.z, S.seg);
-        S.road = onLane && pl.lateral > -h + 0.1 && m.lateral > halfW[m.i] + 0.3 ? 'pit' : 'main';
+        S.road = onLane && PIT_SIDE * pl.lateral > -h + 0.1 && PIT_SIDE * m.lateral > halfW[m.i] + 0.3 ? 'pit' : 'main';
       }
       if (S.road === 'main' && !post) { post = locate(S.x, S.z, S.seg); S.seg = post.i; }
     }
@@ -4060,7 +4415,7 @@ const lastEl   = document.getElementById('lastlap');
 const warnEl   = document.getElementById('warn');
 const flashEl  = document.getElementById('flash');
 
-const MIN_LAP = 40000;        // ms — no real lap of this track is anywhere near this quick
+const MIN_LAP = IS_MACAU ? 60000 : 40000;        // ms — no real lap of this track is anywhere near this quick
 const T_ = { lapStart: 0, now: 0, best: null, last: null, laps: 0, prevS: 0, armed: false };
 
 function fmt(ms) {
@@ -4078,7 +4433,7 @@ function fmt(ms) {
 // be to ignore the corner altogether.
 const CUT_PENALTY = 5;                 // seconds, as the regulations have it
 function cutCheck(loc) {
-  if (!loc) return;                    // in the pit lane, nowhere near the chicane
+  if (!loc || !ESCAPE) return;                    // in the pit lane, nowhere near the chicane
   const d = lapD(loc.i), ew = escapeWidth(loc.i), off = loc.lateral - halfW[loc.i];
   // Deep in the escape road, not merely a wheel over the kerb — running wide at
   // the chicane and gathering it up again is racing, and costs nothing.
