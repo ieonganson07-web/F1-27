@@ -42,7 +42,7 @@
 
   /* rev bar */
   #revwrap { position:fixed; left:50%; transform:translateX(-50%); bottom:22px;
-             width:min(560px, 62vw); height:14px; border-radius:8px;
+             width:min(560px, calc(62 * var(--vw))); height:14px; border-radius:8px;
              background:rgba(255,255,255,.10); overflow:hidden;
              box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; pointer-events:none; }
   #rev { height:100%; width:0%; border-radius:8px;
@@ -168,16 +168,16 @@
   #touch .pad { pointer-events:auto; touch-action:none; user-select:none; -webkit-user-select:none;
                 -webkit-tap-highlight-color:transparent; box-shadow:0 6px 24px rgba(0,0,0,.35);
                 display:grid; place-items:center; font-size:11px; font-weight:800; letter-spacing:2px; }
-  #steerPad { position:absolute; left:max(12px, env(safe-area-inset-left));
-              bottom:max(14px, env(safe-area-inset-bottom)); width:min(44vw, 330px); height:98px;
+  #steerPad { position:absolute; left:max(12px, var(--sal));
+              bottom:max(14px, var(--sab)); width:min(calc(44 * var(--vw)), 330px); height:98px;
               border-radius:22px; background:rgba(10,12,14,.5); border:1px solid rgba(255,255,255,.16); }
   #steerKnob { width:76px; height:76px; border-radius:50%; background:rgba(255,255,255,.15);
                border:1px solid rgba(255,255,255,.3); color:rgba(255,255,255,.6);
                display:grid; place-items:center; font-size:10px; font-weight:800; letter-spacing:2px;
                transition:background .12s, color .12s; }
   #steerPad.on #steerKnob { background:#ffd23f; border-color:#ffd23f; color:#1d1f23; }
-  #pedalPads { position:absolute; right:max(12px, env(safe-area-inset-right));
-               bottom:max(14px, env(safe-area-inset-bottom)); display:flex; gap:12px; align-items:flex-end; }
+  #pedalPads { position:absolute; right:max(12px, var(--sar));
+               bottom:max(14px, var(--sab)); display:flex; gap:12px; align-items:flex-end; }
   /* Pedals, not buttons: hinged at the bottom, and how far up you press is how
      far they travel — the fill shows it, the same as a real throttle. */
   #touch .pedal { position:relative; width:82px; height:158px; border-radius:16px 16px 9px 9px;
@@ -193,44 +193,40 @@
   #touch .pedal .lbl { position:absolute; left:0; right:0; bottom:9px; text-align:center;
                        font-size:10px; font-weight:800; letter-spacing:2px; color:rgba(255,255,255,.82);
                        text-shadow:0 1px 3px rgba(0,0,0,.6); }
-  #touchBtns { position:absolute; right:max(12px, env(safe-area-inset-right));
-               top:max(70px, calc(env(safe-area-inset-top) + 62px)); display:flex; flex-direction:column; gap:8px; }
+  #touchBtns { position:absolute; right:max(12px, var(--sar));
+               top:max(70px, calc(var(--sat) + 62px)); display:flex; flex-direction:column; gap:8px; }
   #touchBtns .btn { pointer-events:auto; touch-action:manipulation; }
   /* with thumbs in both bottom corners, the readouts move out of the way */
   /* the tower comes back on touch, shrunk, and only the rows that matter */
-  body.touch #tower { top:max(76px, calc(env(safe-area-inset-top) + 68px));
-                      right:max(12px, env(safe-area-inset-right)); }
+  body.touch #tower { top:max(76px, calc(var(--sat) + 68px));
+                      right:max(12px, var(--sar)); }
   body.touch #tower .tr { font-size:9.5px; padding:0 7px; gap:5px; }
   body.touch #tower .tr b { width:13px; }
   body.touch #tower .tr i { width:2px; height:9px; }
   body.touch #tower .tr span { width:26px; }
-  body.touch #minimap { left:max(12px, env(safe-area-inset-left)); bottom:max(12px, env(safe-area-inset-bottom));
+  body.touch #minimap { left:max(12px, var(--sal)); bottom:max(12px, var(--sab));
                         right:auto; top:auto; width:118px; height:92px; }
   body.touch:not(.tilt) #minimap { display:none; }     /* the pad needs that corner */
-  body.touch #touchBtns { flex-direction:row; right:auto; top:max(148px, calc(env(safe-area-inset-top) + 140px));
-                          left:max(12px, env(safe-area-inset-left)); }
+  body.touch #touchBtns { flex-direction:row; right:auto; top:max(148px, calc(var(--sat) + 140px));
+                          left:max(12px, var(--sal)); }
   body.touch #cluster { right:auto; left:50%; transform:translateX(-50%); bottom:4px; text-align:center; }
   body.touch #speed { font-size:36px; letter-spacing:-1px; }
   body.touch #speed small { font-size:12px; }
   body.touch #gear { font-size:17px; margin-top:0; }
   body.touch #assist { display:none; }
-  body.touch #revwrap { bottom:118px; width:min(300px, 36vw); }
-  body.touch #tyres { left:max(12px, env(safe-area-inset-left)); bottom:126px; }
+  body.touch #revwrap { bottom:118px; width:min(300px, calc(36 * var(--vw))); }
+  body.touch #tyres { left:max(12px, var(--sal)); bottom:126px; }
   body.touch #warn { top:42px; }
   body.touch #pitmsg { top:76px; font-size:15px; padding:6px 12px; }
   /* tilt steering: the pad gives way to a slim level indicator */
   body.tilt #steerPad { display:none; }
   #levelBtn { display:none; }
   body.touch.tilt #levelBtn { display:block; }
-  /* the pad is only ever a stand-in, so say so and offer a way back */
-  #tiltOff { position:absolute; left:50%; transform:translateX(-50%);
-             top:max(46px, calc(env(safe-area-inset-top) + 38px)); display:none;
-             pointer-events:auto; letter-spacing:1px; font-size:11px; padding:7px 13px;
-             background:rgba(208,38,58,.9); border-color:rgba(255,255,255,.35); }
-  body.touch:not(.tilt) #tiltOff { display:block; }
-  #rotate { position:fixed; inset:0; z-index:20; display:none; place-items:center; text-align:center; padding:30px;
-            background:#0b0d10; color:#e9edf2; font-size:16px; font-weight:700; letter-spacing:1px; line-height:1.6; }
-  body.touch #rotate.show { display:grid; }
+  /* Phones play in landscape only: held upright, the page is turned a quarter
+     (see layoutView). These stand in for env() and vw/vh, which stay physical. */
+  :root { --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom);
+          --sal:env(safe-area-inset-left); --sar:env(safe-area-inset-right); --vw:1vw; --vh:1vh; }
+  body.rotated { position:fixed; left:0; top:0; transform-origin:0 0; }
   @media (max-width: 860px) {
     #speed { font-size:46px; letter-spacing:-2px; }
     #speed small { font-size:13px; }
@@ -239,8 +235,8 @@
     #tyres { bottom:120px; }
     #timing { left:14px; top:12px; }
     #curlap { font-size:24px; }
-    #help { max-width:min(440px, 93vw); max-height:84vh; overflow:auto; padding:20px 22px; }
-    #setup { top:92px; min-width:0; width:min(330px, 93vw); }
+    #help { max-width:min(440px, calc(93 * var(--vw))); max-height:calc(84 * var(--vh)); overflow:auto; padding:20px 22px; }
+    #setup { top:92px; min-width:0; width:min(330px, calc(93 * var(--vw))); }
     #setup .opts { flex-wrap:wrap; gap:5px; }
     #setup .btn { padding:5px 8px; font-size:11px; }
     #restartBtn { top:104px; left:14px; }
@@ -291,38 +287,35 @@
 
 <div id="warn">OFF TRACK</div>
 <div id="flash"></div>
-<div id="hint">C — CAMERA · R — RESET · ENTER — RESTART · H — HELP</div>
+<div id="hint">R — RESET · ENTER — RESTART · H — HELP</div>
 
 <div id="touch">
   <div id="steerPad" class="pad"><div id="steerKnob">STEER</div></div>
-  <button class="btn" id="tiltOff">TAP TO ENABLE TILT STEERING</button>
   <div id="pedalPads">
     <div id="brakePad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">BRAKE</div></div>
     <div id="gasPad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">GAS</div></div>
   </div>
   <div id="touchBtns">
-    <button class="btn" id="camBtn">CAM</button>
+    <button class="btn" id="steerModeBtn">TILT</button>
     <button class="btn" id="tyreBtn">TYRE</button>
     <button class="btn" id="levelBtn">LEVEL</button>
     <button class="btn" id="resetTouchBtn">RESET</button>
   </div>
 </div>
-<div id="rotate">Turn your device sideways to race<br><small style="opacity:.6;font-weight:600">landscape gives you the whole track</small></div>
 
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1 id="helpTitle">Apex GP — Monaco</h1>
-  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 14 · Macau Grand Prix</b></p>
+  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 16 · landscape lock</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
     <tr><td class="key"><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd></td><td>Steer</td></tr>
     <tr><td class="key"><kbd>Space</kbd></td><td>Handbrake</td></tr>
     <tr><td class="key"><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Assist: high / medium / off</td></tr>
-    <tr><td class="key"><kbd>C</kbd></td><td>Camera: chase / cockpit / TV</td></tr>
     <tr><td class="key"><kbd>T</kbd></td><td>Tyres for the next stop — worn ones cost grip and lap time</td></tr>
     <tr><td class="key">Pit lane</td><td id="helpPit">In on the right after Rascasse, 80 km/h — stop in the red box</td></tr>
-    <tr><td class="key">On a phone</td><td>Roll the device to steer · gas &amp; brake under your right thumb · LEVEL re-centres</td></tr>
+    <tr><td class="key">On a phone</td><td>Slide the STEER pad to steer · gas &amp; brake under your right thumb · TILT swaps to rolling the device (LEVEL re-centres)</td></tr>
     <tr><td class="key">On the grid</td><td>Click your Grand Prix, laps, grid slot and rivals — or <kbd>P</kbd> <kbd>L</kbd> <kbd>G</kbd> <kbd>K</kbd></td></tr>
     <tr><td class="key"><kbd>Enter</kbd></td><td>Restart the race — or click RESTART</td></tr>
     <tr><td class="key"><kbd>R</kbd></td><td>Reset to track</td></tr>
@@ -410,20 +403,7 @@ const TUNE = {
                         // for, which is what kills darting and snap oversteer.
   slideDamp:   1.2,     // bleeds off sideways drift (0 = none)
 
-  // --- chase camera ---
-  cam: {
-    dist:      8.6,    // metres behind the car — constant, not speed-dependent
-    distGain:  0.0,    // extra metres per m/s if you *want* it to pull back
-    height:    3.2,
-    heightDrop: 0.006, // camera drops a little at speed
-    yawSmooth: 0.0022, // heading lag: fraction of error left after 1 s (lower = tighter)
-    lookAhead: 13.0,
-    lookHeight: 1.05,
-    fov:       60,
-    fovGain:   0.13,   // FOV opens with speed; this is the sense-of-speed cue
-  },
-
-  // --- cockpit camera (C to cycle) ---
+  // --- cockpit camera (the only view) ---
   cockpit: {
     x: 0.30, y: 0.98,  // eye position in the car: above and behind the halo
     pitchDown: 9,      // degrees below level
@@ -638,7 +618,34 @@ const MOBILE = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoin
 const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0, mode: 'pad' };
 const renderer = new THREE.WebGLRenderer({ antialias: !MOBILE, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
-renderer.setSize(innerWidth, innerHeight);
+// Phones and tablets always play in landscape. A web page cannot lock the screen
+// (Safari ignores the request), so held upright the whole page is turned a
+// quarter clockwise and laid out at the landscape size. VIEW is that size;
+// everything that sizes the canvas reads it instead of innerWidth/innerHeight.
+const VIEW = { w: innerWidth, h: innerHeight, rotated: false };
+const insetProbe = document.createElement('div');
+insetProbe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+document.documentElement.appendChild(insetProbe);
+function layoutView() {
+  const b = document.body, root = document.documentElement.style;
+  const rot = b.classList.contains('touch') && innerHeight > innerWidth;
+  VIEW.rotated = rot;
+  VIEW.w = rot ? innerHeight : innerWidth;
+  VIEW.h = rot ? innerWidth : innerHeight;
+  b.classList.toggle('rotated', rot);
+  b.style.width = rot ? VIEW.w + 'px' : '';
+  b.style.height = rot ? VIEW.h + 'px' : '';
+  b.style.transform = rot ? `translateX(${innerWidth}px) rotate(90deg)` : '';
+  root.setProperty('--vw', VIEW.w / 100 + 'px');
+  root.setProperty('--vh', VIEW.h / 100 + 'px');
+  if (rot) {        // the notch and home bar move with the turn: top -> left, bottom -> right
+    const cs = getComputedStyle(insetProbe);
+    root.setProperty('--sal', cs.paddingTop); root.setProperty('--sar', cs.paddingBottom);
+    root.setProperty('--sat', cs.paddingRight); root.setProperty('--sab', cs.paddingLeft);
+  } else for (const v of ['--sal', '--sar', '--sat', '--sab']) root.removeProperty(v);
+}
+layoutView();
+renderer.setSize(VIEW.w, VIEW.h);
 // Colour-managed output with a filmic curve: highlights roll off instead of
 // clipping, so sunlit bodywork and white lines keep their shape.
 renderer.outputEncoding = THREE.sRGBEncoding;
@@ -669,14 +676,17 @@ let SKY_MESH = null;
   scene.add(SKY_MESH);
 }
 
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.05, 4000);
+const camera = new THREE.PerspectiveCamera(62, VIEW.w / VIEW.h, 0.05, 4000);
 scene.add(camera);
 
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
+function fitView() {
+  layoutView();
+  camera.aspect = VIEW.w / VIEW.h;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
+  renderer.setSize(VIEW.w, VIEW.h);
+}
+addEventListener('resize', fitView);
+addEventListener('orientationchange', () => setTimeout(fitView, 350));
 
 /* ------------------------------------------------------------------ lights */
 // Keep the sky fill low: it is the flat ambient that washes a scene out. The sun
@@ -3935,7 +3945,6 @@ addEventListener('keydown', e => {
     if (RACE.phase === 'grid' || RACE.phase === 'lights') placeOnGrid(); else resetCar();
     camSnap = true;
   }
-  if (e.code === 'KeyC') camMode = (camMode + 1) % 3;
   if (e.code === 'KeyH') helpCard.classList.toggle('hidden');
   if (e.code === 'Digit1') applyAssist(0);
   if (e.code === 'Digit2') applyAssist(1);
@@ -3959,28 +3968,39 @@ function readInput() {
 }
 
 /* ---------------------------------------------------------- touch controls --
-   On a phone or tablet: steer by rolling the device, throttle and brake under
-   the right thumb, and the keys that have no equivalent as buttons.
+   On a phone or tablet: steer with the pad under the left thumb (or, with TILT,
+   by rolling the device), throttle and brake under the right thumb, and the
+   keys that have no equivalent as buttons.
    The keyboard keeps working, so a tablet with one attached loses nothing. */
 {
   const forced = /[?&]touch=(1|on)/.test(location.search);
   const isTouch = forced || MOBILE;
   if (isTouch) {
     document.body.classList.add('touch');
-    TOUCH.mode = 'tilt';                       // tilt from the off; the pad stays hidden
-    document.body.classList.add('tilt');
+    let saved = null;                          // the stick, unless tilt was picked last time
+    try { saved = localStorage.getItem('apexgp.steer'); } catch (e) {}
+    TOUCH.mode = saved === 'tilt' ? 'tilt' : 'pad';
+    document.body.classList.toggle('tilt', TOUCH.mode === 'tilt');
+    document.getElementById('steerModeBtn').textContent = TOUCH.mode === 'tilt' ? 'STICK' : 'TILT';
   }
 
   const pad = document.getElementById('steerPad'), knob = document.getElementById('steerKnob');
-  const rotate = document.getElementById('rotate');
+  // Pointer positions come in screen space; on a turned page, map them (and the
+  // element's box) back into the page's own landscape coordinates.
+  const toView = e => VIEW.rotated ? { x: e.clientY, y: innerWidth - e.clientX } : { x: e.clientX, y: e.clientY };
+  const boxOf = el => {
+    const r = el.getBoundingClientRect();
+    return VIEW.rotated ? { left: r.top, top: innerWidth - r.right, width: r.height, height: r.width }
+                        : { left: r.left, top: r.top, width: r.width, height: r.height };
+  };
 
   const click = (el, fn) => el.addEventListener('click', e => { fn(e); e.currentTarget.blur(); });
   const pedal = (el, set) => {          // press near the top for more, ride it lower for less
     const fill = el.querySelector('.fill');
     let id = null;
     const apply = e => {
-      const r = el.getBoundingClientRect();
-      const up = Math.max(0, Math.min(1, (r.bottom - e.clientY) / r.height));
+      const r = boxOf(el), p = toView(e);
+      const up = Math.max(0, Math.min(1, (r.top + r.height - p.y) / r.height));
       const v = 0.45 + up * 0.55;                   // even a light tap drives properly
       set(v); fill.style.height = (v * 100).toFixed(0) + '%';
     };
@@ -4000,8 +4020,8 @@ function readInput() {
   {                                                   // steering: slide across the pad
     let id = null;
     const track = e => {
-      const r = pad.getBoundingClientRect();
-      TOUCH.axis = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width * 2 - 1) * 1.15));
+      const r = boxOf(pad), p = toView(e);
+      TOUCH.axis = Math.max(-1, Math.min(1, ((p.x - r.left) / r.width * 2 - 1) * 1.15));
       knob.style.transform = 'translateX(' + (TOUCH.axis * (r.width / 2 - 46)).toFixed(1) + 'px)';
     };
     pad.addEventListener('pointerdown', e => {
@@ -4023,7 +4043,6 @@ function readInput() {
     const b = document.getElementById(id);
     if (b) b.addEventListener('click', e => { fn(); e.currentTarget.blur(); });
   };
-  tap('camBtn', () => { camMode = (camMode + 1) % 3; });
   tap('tyreBtn', () => { S.nextTyre = (S.nextTyre + 1) % COMPOUNDS.length; });
   tap('resetTouchBtn', () => { resetCar(); camSnap = true; });
 
@@ -4033,7 +4052,8 @@ function readInput() {
      and it is zeroed wherever you are holding it when you switch tilt on. */
   let tiltZero = null, tiltSeen = 0;
   const tiltRead = e => {
-    const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    // a turned page is held as a landscape screen would be, whatever the browser reports
+    const ang = VIEW.rotated ? 90 : (screen.orientation && screen.orientation.angle) || window.orientation || 0;
     const b = e.beta, g = e.gamma;
     if (b === null || g === null) return null;
     return ang === 90 ? b : ang === 270 || ang === -90 ? -b : ang === 180 ? -g : g;
@@ -4077,6 +4097,8 @@ function readInput() {
     }
     TOUCH.mode = mode;
     document.body.classList.toggle('tilt', mode === 'tilt');
+    document.getElementById('steerModeBtn').textContent = mode === 'tilt' ? 'STICK' : 'TILT';
+    try { localStorage.setItem('apexgp.steer', mode); } catch (e) {}
     updateSetupUI();
   };
   window.levelTilt = () => { tiltZero = null; };
@@ -4090,13 +4112,16 @@ function readInput() {
     setSteerMode('tilt');
   };
   addEventListener('pointerdown', () => ensureTilt(), { passive: true });
-  // Asking again is a fresh gesture, so the iOS prompt can appear a second time.
-  click(document.getElementById('tiltOff'), () => { tiltAsked = false; tiltSeen = 0; setSteerMode('tilt'); });
+  // TILT / STICK swaps the steering. Choosing tilt is a tap, so the iOS motion
+  // prompt can appear; choosing the stick again needs no permission at all.
+  tap('steerModeBtn', () => {
+    if (TOUCH.mode === 'tilt') setSteerMode('pad', true);
+    else { tiltAsked = true; tiltSeen = 0; setSteerMode('tilt'); }
+  });
 
-  const checkRotate = () => rotate.classList.toggle('show', innerHeight > innerWidth);
-  addEventListener('resize', checkRotate);
-  addEventListener('orientationchange', () => setTimeout(checkRotate, 350));
-  checkRotate();
+  if (isTouch) fitView();                              // now that the page knows it is touch: landscape
+  // Where the browser does allow a real lock (Android, fullscreen), take it too.
+  addEventListener('pointerdown', () => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }, { once: true, passive: true });
   addEventListener('pointerdown', () => audioStart(), { passive: true });   // iOS unlocks audio on a gesture
 
   // iOS Safari ignores user-scalable=no, so refuse the zoom gestures outright —
@@ -4512,76 +4537,30 @@ function audioUpdate(rpmFrac, throttle, slip, speed) {
 }
 
 /* ---------------------------------------------------------------- camera */
-let camMode = 0;                                   // 0 chase, 1 cockpit, 2 TV
-// Chase camera state. Only the *heading* is smoothed — see updateCamera.
-let camYaw = 0, camSnap = true, lastCamMode = -1;
+// The cockpit is the only view: the eye sits just above the halo looking down the
+// nose, so the halo arches below screen centre, the front tyres fill the sides
+// and the mirrors sit in the bottom corners. It rides the car, pitching on
+// gradients. (camSnap is still set wherever the car is teleported.)
+let camSnap = true;
 const wob = (t, f) => Math.sin(t * f) * 0.6 + Math.sin(t * f * 1.73 + 1.3) * 0.4;  // smooth, not per-frame random
 const tmp = new THREE.Vector3();
+document.body.classList.add('cockpit');
 
 function updateCamera(dt, speed) {
-  const cs = Math.cos(S.yaw), sn = Math.sin(S.yaw);
-
-  if (camMode === 1) {
-    // Cockpit: the eye sits just above the halo looking down the nose, so the
-    // halo arches below screen centre, the front tyres fill the sides and the
-    // mirrors sit in the bottom corners. It rides the car, pitching on gradients.
-    const K = TUNE.cockpit;
-    car.updateMatrixWorld(true);
-    const eye = car.localToWorld(new THREE.Vector3(K.x, K.y, 0));
-    const look = car.localToWorld(new THREE.Vector3(
-      K.x + 20, K.y - 20 * Math.tan(K.pitchDown * Math.PI / 180), 0));
-    const buzz = Math.min(speed, 90) / 90 * K.vibration;
-    camera.position.set(eye.x, eye.y + wob(T_.now, 0.09) * buzz * 0.5, eye.z);
-    camera.up.set(0, 1, 0);
-    camera.lookAt(look);
-    // hold the horizontal FOV so a tall or wide window frames the halo the same
-    camera.fov = Math.min(100, 2 * Math.atan(Math.tan(K.hfov * Math.PI / 360) / camera.aspect) * 180 / Math.PI);
-  } else if (camMode === 2) {
-    // TV — fixed pole near the car, swings to follow
-    const n = path[(S.seg + 40) % SAMPLES];
-    const side = n.nrm.clone().multiplyScalar(26);
-    camera.position.set(n.pos.x + side.x, n.pos.y + 11, n.pos.z + side.z);
-    camera.up.set(0, 1, 0);
-    camera.lookAt(RP.x, surfaceY(RP.x, RP.z) + 0.7, RP.z);
-    camera.fov = 40;
-  } else {
-    // Chase. The camera is pinned to the car's position and only its heading is
-    // smoothed. Lerping the camera's world position toward a target that moves
-    // with the car leaves a steady-state trailing error of v * tau — which is
-    // why it used to slide further back the faster you went. Rigid position
-    // plus a lagged heading gives the same swing through corners with none of
-    // the drift.
-    const C = TUNE.cam;
-    if (camSnap) { camYaw = RP.yaw; camSnap = false; }
-    let dy = RP.yaw - camYaw;
-    while (dy >  Math.PI) dy -= Math.PI * 2;
-    while (dy < -Math.PI) dy += Math.PI * 2;
-    camYaw += dy * (1 - Math.pow(C.yawSmooth, dt));
-
-    const ccs = Math.cos(camYaw), csn = Math.sin(camYaw);
-    const back = C.dist + Math.min(speed, 90) * C.distGain;
-    const carY = surfaceY(RP.x, RP.z);
-    // aim the camera at the road ahead, so crests and dips read properly
-    const aheadY = path[(S.seg + 10) % SAMPLES].pos.y;
-    const high = carY + C.height - Math.min(speed, 90) * C.heightDrop;
-    const shake = Math.max(0, S.slip - 0.9) * 0.12;    // gentle, only right at the limit
-
-    camera.position.set(
-      RP.x - ccs * back + wob(T_.now, 0.031) * shake,
-      high              + wob(T_.now, 0.047) * shake,
-      RP.z - csn * back + wob(T_.now, 0.039) * shake
-    );
-    camera.up.set(0, 1, 0);
-    camera.lookAt(RP.x + ccs * C.lookAhead, aheadY + C.lookHeight, RP.z + csn * C.lookAhead);
-    camera.fov = C.fov + Math.min(speed, 95) * C.fovGain;
-  }
+  const K = TUNE.cockpit;
+  camSnap = false;
+  car.updateMatrixWorld(true);
+  const eye = car.localToWorld(new THREE.Vector3(K.x, K.y, 0));
+  const look = car.localToWorld(new THREE.Vector3(
+    K.x + 20, K.y - 20 * Math.tan(K.pitchDown * Math.PI / 180), 0));
+  const buzz = Math.min(speed, 90) / 90 * K.vibration;
+  camera.position.set(eye.x, eye.y + wob(T_.now, 0.09) * buzz * 0.5, eye.z);
+  camera.up.set(0, 1, 0);
+  camera.lookAt(look);
+  // hold the horizontal FOV so a tall or wide window frames the halo the same
+  camera.fov = Math.min(100, 2 * Math.atan(Math.tan(K.hfov * Math.PI / 360) / camera.aspect) * 180 / Math.PI);
   camera.updateProjectionMatrix();
-
-  if (camMode !== lastCamMode) {               // swap HUD styles with the view
-    document.body.classList.toggle('cockpit', camMode === 1);
-    if (HALO_DISP) HALO_DISP.mesh.visible = camMode === 1;
-    lastCamMode = camMode;
-  }
+  if (HALO_DISP && !HALO_DISP.mesh.visible) HALO_DISP.mesh.visible = true;
 
   const sy = surfaceY(S.x, S.z);
   sun.position.set(S.x + 240, sy + 420, S.z + 160);
@@ -4832,7 +4811,7 @@ function frame(now) {
   updateCamera(dt, speed);
   const rpm = updateHUD(vLong);
   if (STEER_WHEEL) STEER_WHEEL.rotation.x = S.steer * 3.2;
-  if (camMode === 1) drawHaloDisplay();
+  drawHaloDisplay();
   drawMinimap();
   updateRaceHUD();
   updateCrew(dt);
