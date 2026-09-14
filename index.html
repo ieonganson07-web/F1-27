@@ -42,7 +42,7 @@
 
   /* rev bar */
   #revwrap { position:fixed; left:50%; transform:translateX(-50%); bottom:22px;
-             width:min(560px, calc(62 * var(--vw))); height:14px; border-radius:8px;
+             width:min(560px, 62vw); height:14px; border-radius:8px;
              background:rgba(255,255,255,.10); overflow:hidden;
              box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; pointer-events:none; }
   #rev { height:100%; width:0%; border-radius:8px;
@@ -168,16 +168,16 @@
   #touch .pad { pointer-events:auto; touch-action:none; user-select:none; -webkit-user-select:none;
                 -webkit-tap-highlight-color:transparent; box-shadow:0 6px 24px rgba(0,0,0,.35);
                 display:grid; place-items:center; font-size:11px; font-weight:800; letter-spacing:2px; }
-  #steerPad { position:absolute; left:max(12px, var(--sal));
-              bottom:max(14px, var(--sab)); width:min(calc(44 * var(--vw)), 330px); height:98px;
+  #steerPad { position:absolute; left:max(12px, env(safe-area-inset-left));
+              bottom:max(14px, env(safe-area-inset-bottom)); width:min(44vw, 330px); height:98px;
               border-radius:22px; background:rgba(10,12,14,.5); border:1px solid rgba(255,255,255,.16); }
   #steerKnob { width:76px; height:76px; border-radius:50%; background:rgba(255,255,255,.15);
                border:1px solid rgba(255,255,255,.3); color:rgba(255,255,255,.6);
                display:grid; place-items:center; font-size:10px; font-weight:800; letter-spacing:2px;
                transition:background .12s, color .12s; }
   #steerPad.on #steerKnob { background:#ffd23f; border-color:#ffd23f; color:#1d1f23; }
-  #pedalPads { position:absolute; right:max(12px, var(--sar));
-               bottom:max(14px, var(--sab)); display:flex; gap:12px; align-items:flex-end; }
+  #pedalPads { position:absolute; right:max(12px, env(safe-area-inset-right));
+               bottom:max(14px, env(safe-area-inset-bottom)); display:flex; gap:12px; align-items:flex-end; }
   /* Pedals, not buttons: hinged at the bottom, and how far up you press is how
      far they travel — the fill shows it, the same as a real throttle. */
   #touch .pedal { position:relative; width:82px; height:158px; border-radius:16px 16px 9px 9px;
@@ -193,40 +193,38 @@
   #touch .pedal .lbl { position:absolute; left:0; right:0; bottom:9px; text-align:center;
                        font-size:10px; font-weight:800; letter-spacing:2px; color:rgba(255,255,255,.82);
                        text-shadow:0 1px 3px rgba(0,0,0,.6); }
-  #touchBtns { position:absolute; right:max(12px, var(--sar));
-               top:max(70px, calc(var(--sat) + 62px)); display:flex; flex-direction:column; gap:8px; }
+  #touchBtns { position:absolute; right:max(12px, env(safe-area-inset-right));
+               top:max(70px, calc(env(safe-area-inset-top) + 62px)); display:flex; flex-direction:column; gap:8px; }
   #touchBtns .btn { pointer-events:auto; touch-action:manipulation; }
   /* with thumbs in both bottom corners, the readouts move out of the way */
   /* the tower comes back on touch, shrunk, and only the rows that matter */
-  body.touch #tower { top:max(76px, calc(var(--sat) + 68px));
-                      right:max(12px, var(--sar)); }
+  body.touch #tower { top:max(76px, calc(env(safe-area-inset-top) + 68px));
+                      right:max(12px, env(safe-area-inset-right)); }
   body.touch #tower .tr { font-size:9.5px; padding:0 7px; gap:5px; }
   body.touch #tower .tr b { width:13px; }
   body.touch #tower .tr i { width:2px; height:9px; }
   body.touch #tower .tr span { width:26px; }
-  body.touch #minimap { left:max(12px, var(--sal)); bottom:max(12px, var(--sab));
+  body.touch #minimap { left:max(12px, env(safe-area-inset-left)); bottom:max(12px, env(safe-area-inset-bottom));
                         right:auto; top:auto; width:118px; height:92px; }
   body.touch:not(.tilt) #minimap { display:none; }     /* the pad needs that corner */
-  body.touch #touchBtns { flex-direction:row; right:auto; top:max(148px, calc(var(--sat) + 140px));
-                          left:max(12px, var(--sal)); }
+  body.touch #touchBtns { flex-direction:row; right:auto; top:max(148px, calc(env(safe-area-inset-top) + 140px));
+                          left:max(12px, env(safe-area-inset-left)); }
   body.touch #cluster { right:auto; left:50%; transform:translateX(-50%); bottom:4px; text-align:center; }
   body.touch #speed { font-size:36px; letter-spacing:-1px; }
   body.touch #speed small { font-size:12px; }
   body.touch #gear { font-size:17px; margin-top:0; }
   body.touch #assist { display:none; }
-  body.touch #revwrap { bottom:118px; width:min(300px, calc(36 * var(--vw))); }
-  body.touch #tyres { left:max(12px, var(--sal)); bottom:126px; }
+  body.touch #revwrap { bottom:118px; width:min(300px, 36vw); }
+  body.touch #tyres { left:max(12px, env(safe-area-inset-left)); bottom:126px; }
   body.touch #warn { top:42px; }
   body.touch #pitmsg { top:76px; font-size:15px; padding:6px 12px; }
   /* tilt steering: the pad gives way to a slim level indicator */
   body.tilt #steerPad { display:none; }
   #levelBtn { display:none; }
   body.touch.tilt #levelBtn { display:block; }
-  /* Phones play in landscape only: held upright, the page is turned a quarter
-     (see layoutView). These stand in for env() and vw/vh, which stay physical. */
-  :root { --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom);
-          --sal:env(safe-area-inset-left); --sar:env(safe-area-inset-right); --vw:1vw; --vh:1vh; }
-  body.rotated { position:fixed; left:0; top:0; transform-origin:0 0; }
+  #rotate { position:fixed; inset:0; z-index:20; display:none; place-items:center; text-align:center; padding:30px;
+            background:#0b0d10; color:#e9edf2; font-size:16px; font-weight:700; letter-spacing:1px; line-height:1.6; }
+  body.touch #rotate.show { display:grid; }
   @media (max-width: 860px) {
     #speed { font-size:46px; letter-spacing:-2px; }
     #speed small { font-size:13px; }
@@ -235,8 +233,8 @@
     #tyres { bottom:120px; }
     #timing { left:14px; top:12px; }
     #curlap { font-size:24px; }
-    #help { max-width:min(440px, calc(93 * var(--vw))); max-height:calc(84 * var(--vh)); overflow:auto; padding:20px 22px; }
-    #setup { top:92px; min-width:0; width:min(330px, calc(93 * var(--vw))); }
+    #help { max-width:min(440px, 93vw); max-height:84vh; overflow:auto; padding:20px 22px; }
+    #setup { top:92px; min-width:0; width:min(330px, 93vw); }
     #setup .opts { flex-wrap:wrap; gap:5px; }
     #setup .btn { padding:5px 8px; font-size:11px; }
     #restartBtn { top:104px; left:14px; }
@@ -302,11 +300,12 @@
     <button class="btn" id="resetTouchBtn">RESET</button>
   </div>
 </div>
+<div id="rotate">Turn your device sideways to race<br><small style="opacity:.6;font-weight:600">landscape gives you the whole track</small></div>
 
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1 id="helpTitle">Apex GP — Monaco</h1>
-  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 16 · landscape lock</b></p>
+  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 17 · steeper Macau hills</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -491,9 +490,10 @@ const MACAU = {
     [832.9,-254.1], [821.1,-250.5], [809.3,-246.9], [797.4,-243.3], [785.7,-239.7], [773.9,-236.2], [762.0,-232.6], [750.2,-229.0],
     [738.4,-225.5], [726.6,-221.9], [714.8,-218.3], [702.9,-214.8],
   ],
-  // Sea level along the Avenida da Amizade; the climb starts at Lisboa, tops out
-  // at Maternity, rolls round the hill and drops from Melco to Fisherman's.
-  elev: [[0, 3], [300, 3], [1118, 3.5], [1700, 4], [1944, 5], [2127, 7], [2350, 13], [2600, 23], [2812, 33], [3000, 31], [3088, 30], [3250, 27], [3423, 26], [3600, 27.5], [3800, 26.5], [3968, 26], [4185, 25], [4330, 26], [4474, 25.5], [4600, 25], [4695, 25], [4850, 22], [5050, 15], [5250, 8], [5333, 6], [5550, 3.5], [5876, 3], [6120, 3]],
+  // Sea level along the Avenida da Amizade. San Francisco Hill climbs hard out of
+  // Lisboa (~8%) to the top at Maternity; the hill section rises and dips through
+  // Solitude and Paiol; then the plunge from Melco down to Fisherman's (~8%).
+  elev: [[0,3], [300,3], [1118,3.5], [1700,4], [1944,5], [2080,5.5], [2160,7], [2290,18], [2420,28], [2560,32], [2812,33], [2950,31], [3088,28], [3250,25], [3423,23], [3550,27], [3700,31], [3850,29], [3968,26], [4100,28], [4185,31], [4330,32], [4474,31], [4600,30], [4695,30], [4750,29.5], [4850,23], [4960,14], [5070,7], [5200,4.5], [5333,4], [5550,3.5], [5876,3], [6120,3]],
   // half-widths: the dual carriageway, narrowing up the hill to ~7 m at Melco
   width: [[0, 6.5], [300, 6.5], [1000, 6.2], [1118, 6.0], [1800, 5.6], [1944, 5.4], [2050, 5.0], [2127, 4.6], [2400, 4.2], [2812, 3.8], [3088, 3.8], [3423, 3.4], [3700, 3.7], [3968, 3.9], [4185, 3.9], [4474, 3.8], [4600, 3.5], [4695, 3.1], [4790, 3.6], [5000, 4.2], [5333, 4.8], [5600, 5.4], [5876, 6.0], [6120, 6.5]],
   land: [[-1450, -1400], [1250, -1400], [1350, -600], [1300, 400], [1150, 1150], [400, 1250], [-600, 1250], [-1450, 1150]],
@@ -618,34 +618,7 @@ const MOBILE = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoin
 const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0, mode: 'pad' };
 const renderer = new THREE.WebGLRenderer({ antialias: !MOBILE, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
-// Phones and tablets always play in landscape. A web page cannot lock the screen
-// (Safari ignores the request), so held upright the whole page is turned a
-// quarter clockwise and laid out at the landscape size. VIEW is that size;
-// everything that sizes the canvas reads it instead of innerWidth/innerHeight.
-const VIEW = { w: innerWidth, h: innerHeight, rotated: false };
-const insetProbe = document.createElement('div');
-insetProbe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
-document.documentElement.appendChild(insetProbe);
-function layoutView() {
-  const b = document.body, root = document.documentElement.style;
-  const rot = b.classList.contains('touch') && innerHeight > innerWidth;
-  VIEW.rotated = rot;
-  VIEW.w = rot ? innerHeight : innerWidth;
-  VIEW.h = rot ? innerWidth : innerHeight;
-  b.classList.toggle('rotated', rot);
-  b.style.width = rot ? VIEW.w + 'px' : '';
-  b.style.height = rot ? VIEW.h + 'px' : '';
-  b.style.transform = rot ? `translateX(${innerWidth}px) rotate(90deg)` : '';
-  root.setProperty('--vw', VIEW.w / 100 + 'px');
-  root.setProperty('--vh', VIEW.h / 100 + 'px');
-  if (rot) {        // the notch and home bar move with the turn: top -> left, bottom -> right
-    const cs = getComputedStyle(insetProbe);
-    root.setProperty('--sal', cs.paddingTop); root.setProperty('--sar', cs.paddingBottom);
-    root.setProperty('--sat', cs.paddingRight); root.setProperty('--sab', cs.paddingLeft);
-  } else for (const v of ['--sal', '--sar', '--sat', '--sab']) root.removeProperty(v);
-}
-layoutView();
-renderer.setSize(VIEW.w, VIEW.h);
+renderer.setSize(innerWidth, innerHeight);
 // Colour-managed output with a filmic curve: highlights roll off instead of
 // clipping, so sunlit bodywork and white lines keep their shape.
 renderer.outputEncoding = THREE.sRGBEncoding;
@@ -676,17 +649,14 @@ let SKY_MESH = null;
   scene.add(SKY_MESH);
 }
 
-const camera = new THREE.PerspectiveCamera(62, VIEW.w / VIEW.h, 0.05, 4000);
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.05, 4000);
 scene.add(camera);
 
-function fitView() {
-  layoutView();
-  camera.aspect = VIEW.w / VIEW.h;
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(VIEW.w, VIEW.h);
-}
-addEventListener('resize', fitView);
-addEventListener('orientationchange', () => setTimeout(fitView, 350));
+  renderer.setSize(innerWidth, innerHeight);
+});
 
 /* ------------------------------------------------------------------ lights */
 // Keep the sky fill low: it is the flat ambient that washes a scene out. The sun
@@ -791,7 +761,8 @@ function smoothWrap(arr, radius, passes) {
 
 // Elevation, smoothed hard so the gradient never kinks, then written into the
 // centreline itself — everything downstream reads its height from path[i].pos.y.
-const elev = smoothWrap(profileFrom(ELEV_KEYS, 0), 26, 4);
+// (Macau's hills are shorter and steeper, so they are smoothed less.)
+const elev = smoothWrap(profileFrom(ELEV_KEYS, 0), IS_MACAU ? 14 : 26, IS_MACAU ? 3 : 4);
 // Macau is a public road, patched and re-patched: a ripple of small bumps on
 // top of the hill, felt through the car and seen from the cockpit.
 if (IS_MACAU) for (let i = 0; i < SAMPLES; i++) {
@@ -1536,11 +1507,14 @@ for (const s of [1, -1]) {
 {
   const markM = new THREE.MeshBasicMaterial({ color: 0xe8e8e4 });
   const dummy = new THREE.Object3D(); dummy.rotation.order = 'YXZ';
+  const bX = new THREE.Vector3(), bY = new THREE.Vector3(), bZ = new THREE.Vector3(), bM = new THREE.Matrix4();
   const place = (mesh, k, i, along, across, len, wid) => {
-    const n = path[i];
-    dummy.position.set(n.pos.x + n.tan.x * along + n.nrm.x * across, n.pos.y + 0.036,
+    const n = path[i], g = grade[i];
+    dummy.position.set(n.pos.x + n.tan.x * along + n.nrm.x * across, n.pos.y + g * along + 0.036,
                        n.pos.z + n.tan.z * along + n.nrm.z * across);
-    dummy.rotation.set(-Math.PI / 2, -Math.atan2(n.tan.z, n.tan.x), 0);
+    // laid on the road's own slope: flat quads floated at one end and sank at the other on the hills
+    bX.set(n.tan.x, g, n.tan.z).normalize(); bY.set(-n.nrm.x, 0, -n.nrm.z); bZ.crossVectors(bX, bY);
+    dummy.quaternion.setFromRotationMatrix(bM.makeBasis(bX, bY, bZ));
     dummy.scale.set(len, wid, 1);
     dummy.updateMatrix(); mesh.setMatrixAt(k, dummy.matrix);
   };
@@ -3985,22 +3959,15 @@ function readInput() {
   }
 
   const pad = document.getElementById('steerPad'), knob = document.getElementById('steerKnob');
-  // Pointer positions come in screen space; on a turned page, map them (and the
-  // element's box) back into the page's own landscape coordinates.
-  const toView = e => VIEW.rotated ? { x: e.clientY, y: innerWidth - e.clientX } : { x: e.clientX, y: e.clientY };
-  const boxOf = el => {
-    const r = el.getBoundingClientRect();
-    return VIEW.rotated ? { left: r.top, top: innerWidth - r.right, width: r.height, height: r.width }
-                        : { left: r.left, top: r.top, width: r.width, height: r.height };
-  };
+  const rotate = document.getElementById('rotate');
 
   const click = (el, fn) => el.addEventListener('click', e => { fn(e); e.currentTarget.blur(); });
   const pedal = (el, set) => {          // press near the top for more, ride it lower for less
     const fill = el.querySelector('.fill');
     let id = null;
     const apply = e => {
-      const r = boxOf(el), p = toView(e);
-      const up = Math.max(0, Math.min(1, (r.top + r.height - p.y) / r.height));
+      const r = el.getBoundingClientRect();
+      const up = Math.max(0, Math.min(1, (r.bottom - e.clientY) / r.height));
       const v = 0.45 + up * 0.55;                   // even a light tap drives properly
       set(v); fill.style.height = (v * 100).toFixed(0) + '%';
     };
@@ -4020,8 +3987,8 @@ function readInput() {
   {                                                   // steering: slide across the pad
     let id = null;
     const track = e => {
-      const r = boxOf(pad), p = toView(e);
-      TOUCH.axis = Math.max(-1, Math.min(1, ((p.x - r.left) / r.width * 2 - 1) * 1.15));
+      const r = pad.getBoundingClientRect();
+      TOUCH.axis = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width * 2 - 1) * 1.15));
       knob.style.transform = 'translateX(' + (TOUCH.axis * (r.width / 2 - 46)).toFixed(1) + 'px)';
     };
     pad.addEventListener('pointerdown', e => {
@@ -4052,8 +4019,7 @@ function readInput() {
      and it is zeroed wherever you are holding it when you switch tilt on. */
   let tiltZero = null, tiltSeen = 0;
   const tiltRead = e => {
-    // a turned page is held as a landscape screen would be, whatever the browser reports
-    const ang = VIEW.rotated ? 90 : (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
     const b = e.beta, g = e.gamma;
     if (b === null || g === null) return null;
     return ang === 90 ? b : ang === 270 || ang === -90 ? -b : ang === 180 ? -g : g;
@@ -4119,9 +4085,10 @@ function readInput() {
     else { tiltAsked = true; tiltSeen = 0; setSteerMode('tilt'); }
   });
 
-  if (isTouch) fitView();                              // now that the page knows it is touch: landscape
-  // Where the browser does allow a real lock (Android, fullscreen), take it too.
-  addEventListener('pointerdown', () => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }, { once: true, passive: true });
+  const checkRotate = () => rotate.classList.toggle('show', innerHeight > innerWidth);
+  addEventListener('resize', checkRotate);
+  addEventListener('orientationchange', () => setTimeout(checkRotate, 350));
+  checkRotate();
   addEventListener('pointerdown', () => audioStart(), { passive: true });   // iOS unlocks audio on a gesture
 
   // iOS Safari ignores user-scalable=no, so refuse the zoom gestures outright —
