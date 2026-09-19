@@ -305,7 +305,7 @@
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1 id="helpTitle">Apex GP — Monaco</h1>
-  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 18 · track surface fix</b></p>
+  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 19 · no racing-line band</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -3354,17 +3354,6 @@ const RL = (() => {
   for (let i = 0; i < N; i++) { let mk = 0; for (let q = 0; q < 35; q++) mk = Math.max(mk, kap[(i + q) % N]); bendAhead[i] = mk; }
   return { off, lim, ds, kap, kc, bendAhead };
 })();
-
-// Rubber laid down where the cars actually run: a dark band along the racing
-// line, so the track reads as used rather than freshly poured.
-{
-  const rubber = new THREE.Mesh(
-    ribbon(i => RL.off[i] - 1.7, i => RL.off[i] + 1.7, 0.024, 0x24262a, 0x24262a, 0),
-    new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide })
-  );
-  rubber.renderOrder = 1;
-  scene.add(rubber);
-}
 
 // Target speed round the line for a given grip and power: the most the tyres
 // allow in each corner, then limited by how fast the car can accelerate out of
