@@ -305,7 +305,7 @@
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1 id="helpTitle">Apex GP — Monaco</h1>
-  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 17 · steeper Macau hills</b></p>
+  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 18 · track surface fix</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
@@ -1278,7 +1278,7 @@ const inGuia = (x, z, pad) => !!HILL && Math.hypot(x - HILL.x, z - HILL.z) < HIL
 // samples used for the height blend — every 4th is plenty and keeps it quick
 const TSAMP = [];
 for (let i = 0; i < SAMPLES; i += 4) TSAMP.push({ p: path[i].pos, i });
-for (let k = 0; k < PITR.pts.length; k += 3) TSAMP.push({ p: PITR.pts[k].pos, i: -1 });   // the pit lane
+for (let k = 0; k < PITR.pts.length; k += 3) TSAMP.push({ p: PITR.pts[k].pos, i: -1, k });   // the pit lane
 
 function terrainY(x, z) {
   // Nearest sample dominates, and the ground is capped to the LOWEST road
@@ -1315,6 +1315,52 @@ function terrainY(x, z) {
     const lateral = (x - pn.pos.x) * pn.nrm.x + (z - pn.pos.z) * pn.nrm.z;
     if (lateral > 0) h = Math.max(h, near + 13 * Math.min(1, (d - 26) / 45));
   }
+
+  return h;
+}
+
+// Keep the ground well clear under the tarmac. It is a 13 m grid and cannot
+// follow the road's own slope and bumps, so left level with the road it came
+// through in beige patches wherever the two were within a couple of cm. Inside
+// any road's barriers it sits 0.35 m below the surface, and for one grid cell
+// beyond them it may only rise gently from there, so no ground triangle can
+// tilt back up through the road's edge. Every stretch of road within reach is
+// checked, not just the nearest sample: where the circuit folds back on itself
+// (the Nouvelle Chicane) the nearest one can be on the other leg.
+const SINK = 0.35;
+function clearOfRoads(x, z, h) {
+  for (let k = 0; k < TSAMP.length; k++) {
+    const t = TSAMP[k], p = t.p, d2 = (p.x - x) * (p.x - x) + (p.z - z) * (p.z - z);
+    if (t.i >= 0) {
+      if (d2 > 48 * 48) continue;
+      let i = t.i, id = Infinity;                       // nearest sample on this stretch
+      for (let q = -3; q <= 3; q++) {
+        const j = (t.i + q + SAMPLES) % SAMPLES, pj = path[j].pos;
+        const e2 = (pj.x - x) * (pj.x - x) + (pj.z - z) * (pj.z - z);
+        if (e2 < id) { id = e2; i = j; }
+      }
+      const n = path[i], lat = (x - n.pos.x) * n.nrm.x + (z - n.pos.z) * n.nrm.z;
+      const along = (x - n.pos.x) * n.tan.x + (z - n.pos.z) * n.tan.z;
+      if (Math.abs(along) > 3 + 0.4 * Math.abs(lat)) continue;   // beside some other sample (tight corners: looser)
+      const out = Math.abs(lat) - wallAt(i, lat) - 2.5;
+      if (out >= 16) continue;
+      const lo = Math.min(n.pos.y, path[(i + 2) % SAMPLES].pos.y, path[(i - 2 + SAMPLES) % SAMPLES].pos.y);
+      h = Math.min(h, lo - SINK + 0.12 * Math.max(0, out));
+    } else {
+      if (d2 > 30 * 30) continue;
+      const P = PITR.pts;
+      let kk = t.k, kd = Infinity;
+      for (let q = -2; q <= 2; q++) {
+        const j = Math.max(0, Math.min(P.length - 1, t.k + q)), pj = P[j].pos;
+        const e2 = (pj.x - x) * (pj.x - x) + (pj.z - z) * (pj.z - z);
+        if (e2 < kd) { kd = e2; kk = j; }
+      }
+      const n = P[kk], lat = Math.abs((x - n.pos.x) * n.nrm.x + (z - n.pos.z) * n.nrm.z);
+      const along = (x - n.pos.x) * n.tan.x + (z - n.pos.z) * n.tan.z;
+      if (Math.abs(along) > 2 || lat > PITR.half(n.s) + 4 + 16) continue;
+      h = Math.min(h, n.pos.y - SINK + 0.12 * Math.max(0, lat - PITR.half(n.s) - 4));   // lane, apron and pit wall
+    }
+  }
   return h;
 }
 
@@ -1340,10 +1386,10 @@ function groundY(x, z) {
   const base = terrainY(x, z);
   // Inside the loop between the start straight and the pool road the pits and
   // paddock stand level with the track — no slope down toward the coast.
-  if (!IS_MACAU && x < -330 && z > -180 && inPoly(x, z, trackPoly)) return base;
+  if (!IS_MACAU && x < -330 && z > -180 && inPoly(x, z, trackPoly)) return clearOfRoads(x, z, base);
   const fade = Math.min(1, edge / 170);
   const g = 0.4 + (base - 0.4) * fade * fade;
-  return inHarbour(x, z, 45) ? Math.max(g, HARBOUR_WATER_Y + 1.6) : g;   // quays stand above the basin
+  return clearOfRoads(x, z, inHarbour(x, z, 45) ? Math.max(g, HARBOUR_WATER_Y + 1.6) : g);   // quays stand above the basin
 }
 
 {
