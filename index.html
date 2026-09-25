@@ -19,15 +19,45 @@
          text-shadow:0 2px 8px rgba(0,0,0,.7); }
 
   /* bottom-right cluster: speed + gear */
-  #cluster { right:24px; bottom:20px; text-align:right; }
+  #cluster { left:50%; transform:translateX(-50%); bottom:16px; text-align:center; }
   #speed { font-size:76px; font-weight:800; line-height:.9; letter-spacing:-3px;
            font-variant-numeric:tabular-nums; }
-  #speed small { font-size:18px; font-weight:600; letter-spacing:1px; opacity:.6; margin-left:6px; }
-  #gear { font-size:30px; font-weight:800; color:#ffd23f; letter-spacing:1px; margin-top:2px; }
+  #speedbox small { font-size:15px; font-weight:600; letter-spacing:1px; opacity:.6; margin-left:5px; }
+  #gear { font-size:54px; font-weight:800; color:#fff; letter-spacing:1px; line-height:1;
+          min-width:58px; text-align:center; }
+  /* the dash: rev lights over gear, speed and DRS, the way a modern F1 wheel reads */
+  #cluster { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  #revlights { display:flex; gap:3px; }
+  #revlights i { width:17px; height:9px; border-radius:2px; background:rgba(255,255,255,.13);
+                 box-shadow:0 0 0 1px rgba(0,0,0,.4) inset; }
+  #revlights i.on.g { background:#31d06a; box-shadow:0 0 8px #31d06a; }
+  #revlights i.on.r { background:#ff3b3b; box-shadow:0 0 8px #ff3b3b; }
+  #revlights i.on.b { background:#7cc0ff; box-shadow:0 0 10px #7cc0ff; }
+  #revlights.flash i { background:#7cc0ff; box-shadow:0 0 12px #7cc0ff; }
+  #dash { display:flex; align-items:center; gap:12px; }
+  #speedbox { font-size:44px; font-weight:800; line-height:.95; font-variant-numeric:tabular-nums; min-width:132px;
+              text-align:right; }
+  #drs { font-size:13px; font-weight:800; letter-spacing:2px; padding:4px 9px; border-radius:6px;
+         color:rgba(255,255,255,.35); background:rgba(255,255,255,.08);
+         box-shadow:0 0 0 1px rgba(255,255,255,.14) inset; }
+  #drs.ready { color:#0b2a16; background:#31d06a; box-shadow:none; }
+  #drs.open { color:#062012; background:#7cff9e; box-shadow:0 0 14px rgba(124,255,158,.8); }
+  #ers { width:210px; height:9px; border-radius:5px; background:rgba(255,255,255,.12); position:relative;
+         box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; }
+  #ers b { position:absolute; left:0; top:0; bottom:0; width:0%; border-radius:5px; background:#ffd23f;
+           transition:width .08s linear; }
+  #ers span { position:absolute; right:0; top:-15px; font-size:9px; font-weight:800; letter-spacing:2px; opacity:.5; }
+  #ers.deploy b { background:#7cc0ff; box-shadow:0 0 10px #7cc0ff; }
+  /* sector times, coloured as on the timing screens */
+  #sectors { display:flex; align-items:center; gap:5px; margin-top:4px; }
+  #sectors i { width:26px; height:5px; border-radius:3px; background:rgba(255,255,255,.16); display:block; }
+  #sectors i.p { background:#c9a6ff; } #sectors i.g { background:#31d06a; } #sectors i.y { background:#ffd23f; }
+  #delta { font-size:13px; font-weight:800; font-variant-numeric:tabular-nums; margin-left:6px; }
+  #delta.up { color:#ff7a7a; } #delta.dn { color:#7cff9e; }
   #assist { font-size:10px; font-weight:800; letter-spacing:2px; margin-top:6px; }
   #assist.a0 { color:#31d0aa; } #assist.a1 { color:#ffd23f; } #assist.a2 { color:#ff5c5c; }
 
-  body.cockpit #cluster, body.cockpit #revwrap, body.cockpit #pedals, body.cockpit #hint { display:none; }
+  body.cockpit #pedals, body.cockpit #hint { display:none; }
   #minimap { position:fixed; left:14px; bottom:12px; width:190px; height:150px; pointer-events:none; }
   #tyres { left:20px; bottom:170px; display:flex; gap:10px; align-items:center; }
   #tyreDot { width:36px; height:36px; border-radius:50%; border:4px solid #f2c230; display:grid; place-items:center;
@@ -40,18 +70,9 @@
             pointer-events:none; opacity:0; transition:opacity .2s; white-space:nowrap; }
   #pitmsg.on { opacity:1; }
 
-  /* rev bar */
-  #revwrap { position:fixed; left:50%; transform:translateX(-50%); bottom:22px;
-             width:min(560px, 62vw); height:14px; border-radius:8px;
-             background:rgba(255,255,255,.10); overflow:hidden;
-             box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; pointer-events:none; }
-  #rev { height:100%; width:0%; border-radius:8px;
-         background:linear-gradient(90deg,#31d0aa 0%,#7fe06a 45%,#ffd23f 72%,#ff5c5c 92%);
-         transition:width .04s linear; }
-  #revwrap.limit #rev { background:#ff3b3b; }
 
   /* pedals */
-  #pedals { position:fixed; left:222px; bottom:20px; display:flex; gap:10px; align-items:flex-end; pointer-events:none; }
+  #pedals { position:fixed; left:222px; bottom:150px; display:flex; gap:10px; align-items:flex-end; pointer-events:none; }
   .pedal { width:16px; height:110px; border-radius:6px; background:rgba(255,255,255,.10);
            box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; position:relative; overflow:hidden; }
   .pedal i { position:absolute; left:0; bottom:0; width:100%; height:0%; display:block; }
@@ -127,6 +148,8 @@
   #results td { padding:3px 6px; }
   #results td:first-child { width:24px; text-align:right; opacity:.7; }
   #results td:last-child { text-align:right; }
+  #results td.no { width:26px; text-align:right; font-weight:800; opacity:.85; }
+  #results td.team { opacity:.55; letter-spacing:1px; font-size:11px; }
   #results i { display:inline-block; width:4px; height:12px; border-radius:2px; margin-right:8px; vertical-align:-1px; }
   #results tr.me { color:#ffd23f; }
   #results .go { margin-top:14px; font-size:12px; font-weight:700; letter-spacing:2px; color:#ffd23f; text-align:center; }
@@ -155,8 +178,10 @@
   #restartBtn.hidden { display:none; }
   #againBtn { margin-top:2px; letter-spacing:2px; background:#31d0aa; border-color:#31d0aa; color:#06241d; }
 
-  #hint { position:fixed; left:50%; bottom:52px; transform:translateX(-50%);
-          font-size:11px; letter-spacing:2px; font-weight:700; opacity:.35; pointer-events:none; }
+  #hint { position:fixed; left:50%; top:10px; transform:translateX(-50%);
+          font-size:10px; letter-spacing:2px; font-weight:700; opacity:.32; pointer-events:none;
+          transition:opacity .8s ease; }
+  #hint.gone { opacity:0; }
 
   /* ---- touch controls: only on a touch device (body.touch) ---------------- */
   html, body { touch-action:none; overscroll-behavior:none; }
@@ -209,12 +234,15 @@
   body.touch:not(.tilt) #minimap { display:none; }     /* the pad needs that corner */
   body.touch #touchBtns { flex-direction:row; right:auto; top:max(148px, calc(env(safe-area-inset-top) + 140px));
                           left:max(12px, env(safe-area-inset-left)); }
-  body.touch #cluster { right:auto; left:50%; transform:translateX(-50%); bottom:4px; text-align:center; }
+  body.touch #cluster { bottom:4px; }
   body.touch #speed { font-size:36px; letter-spacing:-1px; }
   body.touch #speed small { font-size:12px; }
   body.touch #gear { font-size:17px; margin-top:0; }
   body.touch #assist { display:none; }
-  body.touch #revwrap { bottom:118px; width:min(300px, 36vw); }
+  body.touch #revlights i { width:12px; height:7px; }
+  body.touch #ers { width:150px; }
+  body.touch #gear { font-size:38px; min-width:44px; }
+  body.touch #speedbox { font-size:32px; min-width:96px; }
   body.touch #tyres { left:max(12px, env(safe-area-inset-left)); bottom:126px; }
   body.touch #warn { top:42px; }
   body.touch #pitmsg { top:76px; font-size:15px; padding:6px 12px; }
@@ -226,9 +254,9 @@
             background:#0b0d10; color:#e9edf2; font-size:16px; font-weight:700; letter-spacing:1px; line-height:1.6; }
   body.touch #rotate.show { display:grid; }
   @media (max-width: 860px) {
-    #speed { font-size:46px; letter-spacing:-2px; }
-    #speed small { font-size:13px; }
-    #gear { font-size:22px; }
+    #speedbox { font-size:34px; min-width:104px; }
+    #gear { font-size:40px; min-width:46px; }
+    #revlights i { width:13px; height:8px; }
     #minimap { width:130px; height:102px; }
     #tyres { bottom:120px; }
     #timing { left:14px; top:12px; }
@@ -248,17 +276,21 @@
   <div class="row"><span class="k">LAP</span><span id="curlap">0:00.000</span></div>
   <div class="row"><span class="k">BEST</span><span id="bestlap">—:—.———</span></div>
   <div class="row"><span class="k">LAST</span><span id="lastlap">—:—.———</span></div>
+  <div class="row" id="sectors"><i></i><i></i><i></i><span id="delta"></span></div>
 </div>
 
 <div class="hud" id="laps"><div class="n"><span id="racepos">P10</span><small id="racecount">/20</small></div><div class="k" id="racelap">GRID</div></div>
 
 <div class="hud" id="cluster">
-  <div id="speed">0<small>KM/H</small></div>
-  <div id="gear">N</div>
+  <div id="revlights"></div>
+  <div id="dash">
+    <div id="drs">DRS</div>
+    <div id="gear">N</div>
+    <div id="speedbox"><span id="speed">0</span><small>KM/H</small></div>
+  </div>
+  <div id="ers"><b></b><span>ERS</span></div>
   <div id="assist" class="a0">ASSIST HIGH</div>
 </div>
-
-<div id="revwrap"><div id="rev"></div></div>
 
 <div id="pedals">
   <div><div class="pedal" id="thr"><i></i></div><div class="plabel">THR</div></div>
@@ -285,7 +317,7 @@
 
 <div id="warn">OFF TRACK</div>
 <div id="flash"></div>
-<div id="hint">R — RESET · ENTER — RESTART · H — HELP</div>
+<div id="hint">C — CAMERA · D — DRS · SHIFT — ERS · R — RESET · ENTER — RESTART · H — HELP</div>
 
 <div id="touch">
   <div id="steerPad" class="pad"><div id="steerKnob">STEER</div></div>
@@ -294,6 +326,7 @@
     <div id="gasPad" class="pad pedal"><div class="fill"></div><div class="ribs"></div><div class="lbl">GAS</div></div>
   </div>
   <div id="touchBtns">
+    <button class="btn" id="drsBtn">DRS</button>
     <button class="btn" id="steerModeBtn">TILT</button>
     <button class="btn" id="tyreBtn">TYRE</button>
     <button class="btn" id="levelBtn">LEVEL</button>
@@ -305,13 +338,16 @@
 <div id="help">
   <button id="helpClose" title="Close">×</button>
   <h1 id="helpTitle">Apex GP — Monaco</h1>
-  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 20 · Singapore Grand Prix</b></p>
+  <p class="sub"><span id="helpSub">Circuit de Monaco, 3.33 km, 19 corners. A 20-car race from a standing start.</span><br><b style="opacity:.5;font-weight:700">build 22 · F1-style HUD, T-cam, DRS, ERS, trackside boards and car numbers</b></p>
   <table>
     <tr><td class="key"><kbd>W</kbd> / <kbd>↑</kbd></td><td>Throttle</td></tr>
     <tr><td class="key"><kbd>S</kbd> / <kbd>↓</kbd></td><td>Brake &amp; reverse</td></tr>
     <tr><td class="key"><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd></td><td>Steer</td></tr>
     <tr><td class="key"><kbd>Space</kbd></td><td>Handbrake</td></tr>
     <tr><td class="key"><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Assist: high / medium / off</td></tr>
+    <tr><td class="key"><kbd>C</kbd></td><td>Camera: T-cam / cockpit / chase</td></tr>
+    <tr><td class="key"><kbd>D</kbd></td><td>DRS — only in a zone, and only within a second of the car ahead</td></tr>
+    <tr><td class="key"><kbd>Shift</kbd></td><td>ERS — spend the battery for more power</td></tr>
     <tr><td class="key"><kbd>T</kbd></td><td>Tyres for the next stop — worn ones cost grip and lap time</td></tr>
     <tr><td class="key">Pit lane</td><td id="helpPit">In on the right after Rascasse, 80 km/h — stop in the red box</td></tr>
     <tr><td class="key">On a phone</td><td>Slide the STEER pad to steer · gas &amp; brake under your right thumb · TILT swaps to rolling the device (LEVEL re-centres)</td></tr>
@@ -512,6 +548,7 @@ const MACAU = {
   pitSide: -1,
   // how the shared track builder treats it (these were inline IS_MACAU values)
   smoothPasses: 40, smoothKeepR: 22, elevSmooth: [14, 3], wallGap: 1.6, kerbR: 45, minLap: 60000,
+  drs: [[5960, 1080]],          // DRS zone: the long run from R Bend down to Mandarin
 };
 
 // Marina Bay Street Circuit — the 2023 layout (the Bay Grandstand loop removed,
@@ -624,6 +661,9 @@ const SINGAPORE = {
   // how the shared track builder treats it (Macau's own values are in MACAU)
   smoothPasses: 20, smoothKeepR: 16, elevSmooth: [20, 3], wallGap: 1.4, kerbR: 60, minLap: 50000,
   night: true,
+  // DRS zones, in lap metres [from, to]: the pit straight, Republic Boulevard
+  // and the run down to Turn 16.
+  drs: [[4760, 230], [620, 1060], [3520, 4150]],
   // Handling for this circuit only. Its 90-degree corners want more lock more
   // often than Macau's (7 stretches at >80% of lock against Macau's 5, measured),
   // so full tilt lock comes at ~24.5 degrees of roll instead of ~28.5, and with
@@ -639,6 +679,18 @@ const TRACK_DATA = IS_MACAU ? MACAU : IS_SINGAPORE ? SINGAPORE : null;
 const TRACK_TUNE = (TRACK_DATA && TRACK_DATA.tune) || {};
 if (TRACK_TUNE.maxSteer) TUNE.maxSteer = TRACK_TUNE.maxSteer;
 const NIGHT = !!(TRACK_DATA && TRACK_DATA.night);
+
+/* ------------------------------------------------------------- DRS and ERS --
+   As in the real thing: the rear wing may only be opened inside a marked zone,
+   and only if you were within a second of the car ahead at the detection point
+   a little before it — and not in the opening laps. It shuts the moment you
+   brake or the zone ends. ERS is a battery: it fills under braking and off the
+   throttle, and the deploy button spends it for extra power down the straights. */
+const DRS_ZONES = TRACK_DATA ? (TRACK_DATA.drs || []) : [[3150, 180]];
+const DRS_DETECT = 130;        // metres before a zone where the gap is measured
+const DRS_FROM_LAP = 2;        // enabled once this many laps are done, as in a race
+const DRS_DRAG = 0.74;         // drag left with the flap open
+const ERS_BOOST = 1.14;        // power multiplier while deploying
 
 // Circuit de Monaco — centreline traced from the official Wikipedia
 // track map (Monte_Carlo_Formula_1_track_map.svg), resampled to a
@@ -750,7 +802,7 @@ const MOBILE = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoin
 // while building its buttons, long before the touch handlers are wired up.
 // On a touch device tilt is the steering; the pad is only a fallback for
 // hardware with no gyroscope, or if motion access is refused.
-const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0, mode: 'pad' };
+const TOUCH = { axis: 0, axisOn: false, thr: 0, brk: 0, mode: 'pad', drs: false };
 const renderer = new THREE.WebGLRenderer({ antialias: !MOBILE, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
@@ -2131,6 +2183,86 @@ if (NIGHT) {
   }
 }
 
+/* ------------------------------------ DRS, sector and braking boards ------ */
+// The signs a modern F1 broadcast is full of: the DRS detection point and the
+// green line where the zone opens, sector markers, and the braking boards
+// counting down into the heavy stops.
+{
+  const signTex = (text, bg, fg, sub) => {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = bg; g.fillRect(0, 0, 256, 128);
+    g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '800 ' + (text.length > 3 ? 46 : 84) + 'px Impact, "Arial Narrow", system-ui, sans-serif';
+    g.fillText(text, 128, sub ? 52 : 64);
+    if (sub) { g.font = '700 26px system-ui, sans-serif'; g.fillText(sub, 128, 100); }
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+  };
+  const postM = new THREE.MeshStandardMaterial({ color: 0x3a3f46, metalness: 0.5, roughness: 0.6 });
+  // Mounted on the barrier itself, just above the hoarding and in FRONT of the
+  // debris fence, the way the real ones are — behind the wire they are unreadable.
+  const sign = (d, tex, w, h, sideWanted) => {
+    const i = distSample(d), n = path[i], sd = sideWanted || -infieldSide(i);
+    if (sd === PIT_SIDE && mainRightNearLane(i)) return;
+    const o = sd * (wallAt(i, sd) + 0.05);
+    const x = n.pos.x + n.nrm.x * o, z = n.pos.z + n.nrm.z * o;
+    if (groundY(x, z) < n.pos.y - 2.5) return;
+    const face = Math.atan2(-sd * n.nrm.x, -sd * n.nrm.z);
+    const y = BOARD_H + 0.06 + h / 2;
+    const panel = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({
+      map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: NIGHT ? 0.55 : 0.18, side: THREE.DoubleSide }));
+    panel.position.set(x, n.pos.y + y, z); panel.rotation.y = face; panel.userData.sign = d; scene.add(panel);
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, h + 0.12, 0.1), postM);
+    post.position.set(x + n.nrm.x * sd * 0.05, n.pos.y + y, z + n.nrm.z * sd * 0.05); scene.add(post);
+  };
+  // a painted line across the road, as at a DRS zone start or a sector split
+  const stripe = (d, colour, width) => {
+    const i = distSample(d), n = path[i];
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(width || 0.5, halfW[i] * 2),
+      new THREE.MeshBasicMaterial({ color: colour }));
+    m.rotation.order = 'YXZ';
+    m.rotation.set(-Math.PI / 2, -Math.atan2(n.tan.z, n.tan.x), 0);
+    m.position.set(n.pos.x, n.pos.y + 0.04, n.pos.z);
+    scene.add(m);
+  };
+  const drsTex = signTex('DRS', '#0d7a3a', '#ffffff');
+  const detTex = signTex('DRS', '#14171b', '#31d06a', 'DETECTION');
+  const secTex = [1, 2, 3].map(k => signTex('S' + k, '#14171b', '#ffd23f'));
+  for (const [from, to] of DRS_ZONES) {
+    const det = (from - DRS_DETECT + LAP_LENGTH) % LAP_LENGTH;
+    for (const sd of [1, -1]) { sign(det, detTex, 2.2, 1.1, sd); sign(from, drsTex, 2.0, 1.0, sd); }
+    stripe(from, 0x31d06a, 0.6);                       // the green line where it opens
+    stripe(to, 0xd8d8d8, 0.4);                          // and where it ends
+  }
+  for (let k = 0; k < 3; k++) sign(k * LAP_LENGTH / 3 + 6, secTex[k], 1.6, 0.8);
+  // Braking boards, where a corner is slow enough to need a real stop. The speed
+  // a corner allows comes from its radius, so this needs nothing but the track.
+  {
+    const cornerV = new Float32Array(SAMPLES);       // m/s the radius allows
+    for (let i = 0; i < SAMPLES; i++) {
+      const A = path[(i - 6 + SAMPLES) % SAMPLES].pos, B = path[i].pos, C = path[(i + 6) % SAMPLES].pos;
+      const ar = Math.abs((B.x - A.x) * (C.z - A.z) - (C.x - A.x) * (B.z - A.z)) / 2;
+      const R = ar > 1e-6 ? Math.hypot(B.x - A.x, B.z - A.z) * Math.hypot(C.x - B.x, C.z - B.z) * Math.hypot(C.x - A.x, C.z - A.z) / (4 * ar) : 1e9;
+      cornerV[i] = Math.min(90, Math.sqrt(16 * R));
+    }
+    const smooth = new Float32Array(SAMPLES);        // the slowest point just ahead is what you brake for
+    for (let i = 0; i < SAMPLES; i++) { let v = 1e9; for (let q = 0; q < 14; q++) v = Math.min(v, cornerV[(i + q) % SAMPLES]); smooth[i] = v; }
+    const prof = smooth, STEP = 5;
+    const boards = [[150, signTex('150', '#e8e8e8', '#14171b')], [100, signTex('100', '#e8e8e8', '#14171b')], [50, signTex('50', '#e8e8e8', '#14171b')]];
+    const drops = [];
+    for (let d = 0; d < LAP_LENGTH; d += STEP) {
+      const drop = prof[distSample(d)] - prof[distSample(d + 130)];
+      if (drop > 18) drops.push([d, drop]);
+    }
+    const picks = [];
+    for (const [d, drop] of drops.sort((a, b) => b[1] - a[1])) {
+      if (picks.every(p => Math.abs(((p - d + LAP_LENGTH * 1.5) % LAP_LENGTH) - LAP_LENGTH / 2) > 180)) picks.push(d);
+      if (picks.length >= 8) break;
+    }
+    for (const d of picks) for (const [back, tex] of boards) sign((d - back + LAP_LENGTH) % LAP_LENGTH, tex, 1.5, 0.75);
+  }
+}
+
 /* ---------------------------------------------------- start / finish line -- */
 const START_LAMPS = [];     // one material per column of start lights, left to right from the grid
 {
@@ -3218,7 +3350,21 @@ const MAT = {
   rim:    new THREE.MeshStandardMaterial({ color: 0x30343b, metalness: 0.85, roughness: 0.34 }),
   visor:  new THREE.MeshPhysicalMaterial({ color: 0x1a2028, metalness: 0.20, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.04 }),
   metal:  new THREE.MeshStandardMaterial({ color: 0x8d939b, metalness: 0.90, roughness: 0.28 }),
+  band:   new THREE.MeshBasicMaterial({ color: 0xf2c230 }),      // tyre sidewall: the compound's colour
+  brake:  new THREE.MeshBasicMaterial({ color: 0x2a1d17 }),      // brake disc, glowing when worked
+  number: null,                                                  // the car number on the nose, set per driver
 };
+// The car number, painted on the nose where the onboard camera looks straight at it.
+function numberTex(n, fg) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '800 96px Impact, "Arial Narrow", system-ui, sans-serif';
+  g.fillText(String(n), 64, 68);
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+}
+MAT.number = new THREE.MeshBasicMaterial({ map: numberTex(1, '#f4f4f6'), transparent: true, depthWrite: false });
+MAT.number.userData.isNumber = true;
 
 // --- loft: skin a run of cross-sections.
 // station = { x, hw, yb, yt, zc }  half-width, bottom y, top y, centre z
@@ -3295,7 +3441,7 @@ function strut(from, to, r, mat) {
   return mesh;
 }
 
-let STEER_WHEEL = null, HALO_DISP = null;
+let STEER_WHEEL = null, HALO_DISP = null, DRS_FLAP = null;
 
 function buildCar() {
   const car = new THREE.Group();
@@ -3411,6 +3557,19 @@ function buildCar() {
     put(plate([[2.44,0.028],[2.62,0.040],[2.60,0.185],[2.42,0.172]], 0.012, MAT.accent),
         0, 0, s * (fwSpan / 2 - 0.045));
   }
+  {  // number decal, lying face-up on the sloping nose top and reading from the cockpit
+    const dec = new THREE.Mesh(new THREE.PlaneGeometry(0.115, 0.20), MAT.number);
+    const basis = new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(0, 0, 1),     // the glyph's right runs across the nose
+      new THREE.Vector3(1, 0, 0),     // its top points at the nose tip
+      new THREE.Vector3(0, 1, 0));    // and it faces the sky
+    const q = new THREE.Quaternion().setFromRotationMatrix(basis);
+    q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -0.058));  // the nose falls away
+    const e = new THREE.Euler().setFromQuaternion(q, 'XYZ');
+    put(dec, 2.29, 0.417, 0, e.x, e.y, e.z);
+    dec.castShadow = false;
+  }
+
   // nose hangs above the wing on two pylons
   for (const s of [1, -1])
     put(strut([2.62, 0.185, s * 0.055], [2.76, 0.300, s * 0.038], 0.016, MAT.carbon));
@@ -3425,7 +3584,7 @@ function buildCar() {
   /* ---------- rear wing ------------------------------------------------- */
   const rwSpan = 1.05, rwX = -2.14, rwY = 0.945;
   put(wingElement(0.34, rwSpan, 0.023, MAT.carbon), rwX,         rwY,         0, 0, 0, 0.28);
-  put(wingElement(0.18, rwSpan, 0.017, MAT.accent), rwX - 0.050, rwY + 0.145, 0, 0, 0, 0.60);
+  DRS_FLAP = put(wingElement(0.18, rwSpan, 0.017, MAT.accent), rwX - 0.050, rwY + 0.145, 0, 0, 0, 0.60);
   for (const s of [1, -1]) {
     put(plate([[-2.46,0.600],[-1.90,0.645],[-1.88,1.155],[-2.02,1.200],[-2.46,1.155]],
               0.018, MAT.carbon), 0, 0, s * (rwSpan / 2 + 0.009));
@@ -3557,6 +3716,9 @@ function buildCar() {
     pivot.add(spin);
 
     const t = tyre(R, halfW); t.castShadow = true; spin.add(t);
+    // brake disc, glowing when it is being worked
+    const brakeDisc = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.62, R * 0.62, 0.05, 18), MAT.brake);
+    brakeDisc.rotation.x = Math.PI / 2; brakeDisc.position.z = -side * halfW * 0.22; spin.add(brakeDisc);
 
     const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.186, 0.186, halfW * 1.94, 20), MAT.rim);
     barrel.rotation.x = Math.PI / 2; barrel.castShadow = true; spin.add(barrel);
@@ -3569,7 +3731,7 @@ function buildCar() {
     const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.05, 10), MAT.accent);
     hub.rotation.x = Math.PI / 2; hub.position.z = side * (halfW * 1.01); spin.add(hub);
 
-    const band = new THREE.Mesh(new THREE.TorusGeometry(R * 0.905, 0.010, 6, 26), MAT.white);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(R * 0.905, 0.016, 6, 26), MAT.band);   // the compound's sidewall stripe
     band.position.z = side * (halfW * 0.78);
     spin.add(band);
 
@@ -3649,6 +3811,8 @@ const S = {
   pitch: 0,                // visual nose-up angle on a gradient
   stick: 0,                // shaped steering input, -1..1
   px: 0, pz: 0, pyaw: 0,   // pose before the last physics step, for interpolation
+  drsArmed: false, drsOpen: false,   // within a second at the detection point / wing open
+  ers: 1, ersOn: false,    // battery 0..1 and whether it is being spent
   tyre: 1, wear: 0,        // fitted compound (index into COMPOUNDS) and wear 0..1
   nextTyre: 1,             // what the crew fits at the next stop (T cycles)
   inLane: false,           // in the pit lane's speed-limited stretch
@@ -3705,20 +3869,23 @@ try {                                  // settings carried across a change of Gr
   }
 } catch (e) {}
 // Ten teams, two cars each; the player drives for the first.
+// Ten invented teams, in the colours a grid tends to have — the names are made
+// up, as the trackside hoardings are, rather than any real constructor's.
 const TEAMS = [
-  { paint: 0xc8102e, white: 0xf4f4f6, accent: 0xffd23f },
-  { paint: 0xa7b0b8, white: 0x15171a, accent: 0x00c2b3 },
-  { paint: 0xff8a1c, white: 0x1f2a44, accent: 0x47c7fc },
-  { paint: 0x1e2f7a, white: 0xe10600, accent: 0xffcd00 },
-  { paint: 0x0b6e5c, white: 0xefefef, accent: 0xcddc39 },
-  { paint: 0xf47fb8, white: 0x1a4ea3, accent: 0xffffff },
-  { paint: 0xf2f2f2, white: 0x1c2a4a, accent: 0xe10600 },
-  { paint: 0x2b63d9, white: 0xf2f2f2, accent: 0xe10600 },
-  { paint: 0x1b1b1d, white: 0xd4af37, accent: 0xf2f2f2 },
-  { paint: 0x8c1b2f, white: 0xf2f2f2, accent: 0x1b1b1d },
+  { name: 'APEX CORSA',   paint: 0xc8102e, white: 0xf4f4f6, accent: 0xffd23f },
+  { name: 'ARGENT',       paint: 0xa7b0b8, white: 0x15171a, accent: 0x00c2b3 },
+  { name: 'SOLARIS',      paint: 0xff8a1c, white: 0x1f2a44, accent: 0x47c7fc },
+  { name: 'MERIDIAN',     paint: 0x1e2f7a, white: 0xe10600, accent: 0xffcd00 },
+  { name: 'VERDE',        paint: 0x0b6e5c, white: 0xefefef, accent: 0xcddc39 },
+  { name: 'AURORA',       paint: 0xf47fb8, white: 0x1a4ea3, accent: 0xffffff },
+  { name: 'NORDIC',       paint: 0xf2f2f2, white: 0x1c2a4a, accent: 0xe10600 },
+  { name: 'ULTRAMARINE',  paint: 0x2b63d9, white: 0xf2f2f2, accent: 0xe10600 },
+  { name: 'OBSIDIAN',     paint: 0x1b1b1d, white: 0xd4af37, accent: 0xf2f2f2 },
+  { name: 'CARMINE',      paint: 0x8c1b2f, white: 0xf2f2f2, accent: 0x1b1b1d },
 ];
 const DRIVER_CODES = ['YOU', 'VAL', 'KIM', 'ODE', 'SAT', 'LIN', 'HAY', 'DUB', 'FAR', 'KES',
                       'NAV', 'RIO', 'TAN', 'BRE', 'COS', 'EZE', 'JAN', 'OKA', 'PAL', 'MAR'];
+const DRIVER_NUMS = [1, 4, 5, 6, 7, 9, 10, 11, 14, 16, 18, 20, 22, 23, 27, 31, 38, 55, 63, 81];
 const hexCss = c => '#' + c.toString(16).padStart(6, '0');
 
 // --- racing line: relax toward the straightest path that stays on the road (a
@@ -3822,18 +3989,24 @@ function mergeByMaterial(group) {
   for (const [mat, items] of byMat) { const m = new THREE.Mesh(mergeGeos(items), mat); m.castShadow = true; group.add(m); }
 }
 function buildRivalModel(team) {
-  const keep = { paint: MAT.paint, white: MAT.white, accent: MAT.accent }, keepWheel = STEER_WHEEL, keepHalo = HALO_DISP;
+  const keep = { paint: MAT.paint, white: MAT.white, accent: MAT.accent, band: MAT.band, brake: MAT.brake };
+  const keepWheel = STEER_WHEEL, keepHalo = HALO_DISP, keepFlap = DRS_FLAP;
+  MAT.band = new THREE.MeshBasicMaterial({ color: 0xf2c230 });
+  MAT.band.userData.isBand = true;            // tagged so each car can be given its own copy
+  MAT.brake = new THREE.MeshBasicMaterial({ color: 0x2a1d17 });
+  const bandMat = MAT.band;
   MAT.paint = new THREE.MeshPhysicalMaterial({ color: team.paint, metalness: 0.05, roughness: 0.30, clearcoat: 1, clearcoatRoughness: 0.06 });
   MAT.white = new THREE.MeshPhysicalMaterial({ color: team.white, metalness: 0.05, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.08 });
   MAT.accent = new THREE.MeshPhysicalMaterial({ color: team.accent, metalness: 0.10, roughness: 0.26, clearcoat: 1, clearcoatRoughness: 0.08 });
   const g = buildCar();
   g.remove(STEER_WHEEL.parent); g.remove(HALO_DISP.mesh);          // cockpit-only parts
-  Object.assign(MAT, keep); STEER_WHEEL = keepWheel; HALO_DISP = keepHalo;
+  Object.assign(MAT, keep); STEER_WHEEL = keepWheel; HALO_DISP = keepHalo; DRS_FLAP = keepFlap;
   mergeByMaterial(g);
   for (const pivot of g.children.filter(c => c.isGroup)) {
     mergeByMaterial(pivot);
     for (const spin of pivot.children.filter(c => c.isGroup)) mergeByMaterial(spin);
   }
+  g.userData.bandMat = bandMat;                 // so a stop can change its tyres' colour
   return g;
 }
 
@@ -3843,9 +4016,19 @@ const RIVALS = [];
   for (let k = 1; k < RACE_CARS; k++) {
     const team = Math.floor(k / 2);
     const mesh = used.has(team) ? models[team].clone() : (used.add(team), models[team]);
+    // A clone shares its materials (and JSON-copies userData), so give every car
+    // its own sidewall material — two team mates can be on different compounds.
+    const bandMat = models[team].userData.bandMat.clone();
+    const numMat = MAT.number.clone();
+    numMat.map = numberTex(DRIVER_NUMS[k], hexCss(TEAMS[team].white)); numMat.needsUpdate = true;
+    mesh.traverse(o => {
+      if (!o.isMesh || !o.material) return;
+      if (o.material.userData.isBand) o.material = bandMat;
+      else if (o.material.userData.isNumber) o.material = numMat;
+    });
     const pivots = mesh.children.filter(c => c.isGroup);        // front left, front right, rear left, rear right
     RIVALS.push({
-      k, code: DRIVER_CODES[k], team, color: hexCss(TEAMS[team].paint), mesh,
+      k, code: DRIVER_CODES[k], team, color: hexCss(TEAMS[team].paint), mesh, bandMat,
       spins: pivots.map(p => p.children.find(c => c.isGroup)), fronts: pivots.slice(0, 2),
       s: 0, lat: 0, latV: 0, v: 0, gripF: 1, powerF: 1, prof: null, react: 0.2,
       tyre: 1, wear: 0, pace: 1,                                  // compound, how worn, resulting pace
@@ -3916,6 +4099,9 @@ function setupRace() {
   S.wear = 0;
   T_.laps = 0; T_.armed = false; T_.best = loadBest(); T_.last = null; T_.lapStart = T_.now; T_.prevS = s0;
   T_.cutting = false; T_.cutLap = false; RACE.pen = 0;
+  T_.split = []; T_.curve = []; T_.ref = null; T_.secIdx = 0;
+  T_.sec = [null, null, null]; T_.bestSec = [null, null, null]; T_.secCol = ['', '', ''];
+  S.ers = 1; S.ersOn = false; S.drsOpen = false; S.drsArmed = false; S.drsAvail = false; TOUCH.drs = false;
   resultsEl.classList.add('hidden');
   towerEl.innerHTML = CARS.map(() => '<div class="tr"><b></b><i></i><span></span><em></em></div>').join('');
   camSnap = true;
@@ -3992,9 +4178,44 @@ function raceStep(dt) {
     }
   } else RACE.clock += dt;
   trackPlayer();
+  updateWings(dt);
   updateRivals(dt);
   carContacts();
   classify();
+}
+// Who is up the road, in seconds — the DRS gap.
+function gapAheadSeconds() {
+  let best = Infinity;
+  for (const c of CARS) {
+    if (c === PLAYER_CAR || c.out || c.done) continue;
+    const d = c.prog - PLAYER_CAR.prog;
+    if (d > 0 && d < best) best = d;
+  }
+  return best === Infinity ? Infinity : best / Math.max(15, PLAYER_CAR.v || 15);
+}
+function updateWings(dt) {
+  const racing = RACE.phase === 'racing';
+  const d = lapD(S.seg), v = Math.hypot(S.vx, S.vz);
+  // the detection point, then the zone itself
+  const inZone = racing && S.road === 'main' && DRS_ZONES.some(z => inLapRange(d, z[0], z[1]));
+  const atDetect = racing && DRS_ZONES.some(z => inLapRange(d, (z[0] - DRS_DETECT + LAP_LENGTH) % LAP_LENGTH, z[0]));
+  if (atDetect) S.drsArmed = gapAheadSeconds() < 1.0;
+  else if (!inZone) S.drsArmed = false;            // past the zone: it has to be earned again
+  const enabled = PLAYER_CAR.lapsDone >= DRS_FROM_LAP;
+  S.drsAvail = inZone && enabled && S.drsArmed;
+  const wants = keys.KeyD || TOUCH.drs;
+  if (!S.drsAvail || input.brk > 0.05 || v < 12) { S.drsOpen = false; if (!S.drsAvail) TOUCH.drs = false; }
+  else if (wants) S.drsOpen = true;
+  if (DRS_FLAP) {                                   // the flap lies flat when it opens
+    const want = S.drsOpen ? 0.10 : 0.60;
+    DRS_FLAP.rotation.z += (want - DRS_FLAP.rotation.z) * Math.min(1, dt * 9);
+  }
+  // ERS: harvest, or spend on the button (a phone deploys it for you at full throttle)
+  const touchAuto = document.body.classList.contains('touch') && input.thr > 0.9;
+  const wantErs = (keys.ShiftLeft || keys.ShiftRight || touchAuto) && S.ers > 0.02 && racing && v > 5;
+  S.ersOn = !!wantErs;
+  if (wantErs) S.ers = Math.max(0, S.ers - 0.14 * dt);
+  else S.ers = Math.min(1, S.ers + (input.brk > 0.2 ? 0.09 : input.thr < 0.05 ? 0.045 : 0.012) * dt);
 }
 function trackPlayer() {
   const P = PLAYER_CAR, L = trackLength, s = path[S.seg].s;
@@ -4285,7 +4506,8 @@ function updateResults(force) {
   const order = standings(), win = order[0];
   const rows = order.map((c, n) => {
     const t = !c.done ? 'RUNNING' : c === win ? fmt(c.finishT * 1000) : gapText(c, win);
-    return `<tr class="${c.isPlayer ? 'me' : ''}"><td>${n + 1}</td><td><i style="background:${c.color}"></i>${c.code}</td><td>${t}</td></tr>`;
+    return `<tr class="${c.isPlayer ? 'me' : ''}"><td>${n + 1}</td><td class="no">${DRIVER_NUMS[c.k] || ''}</td>` +
+           `<td><i style="background:${c.color}"></i>${c.code}</td><td class="team">${(TEAMS[c.team] || {}).name || ''}</td><td>${t}</td></tr>`;
   }).join('');
   resultsEl.innerHTML = `<h1>${GP.gpName}</h1><p class="sub">${RACE.laps} laps · AI ${AI_LEVELS[RACE.level].name}</p>` +
                         `<table>${rows}</table><div class="go"><button class="btn" id="againBtn">RACE AGAIN</button></div>`;
@@ -4362,6 +4584,7 @@ addEventListener('keydown', e => {
     if (RACE.phase === 'grid' || RACE.phase === 'lights') placeOnGrid(); else resetCar();
     camSnap = true;
   }
+  if (e.code === 'KeyC') { camMode = (camMode + 1) % 3; camSnap = true; raceFlash(CAM_NAMES[camMode]); }
   if (e.code === 'KeyH') helpCard.classList.toggle('hidden');
   if (e.code === 'Digit1') applyAssist(0);
   if (e.code === 'Digit2') applyAssist(1);
@@ -4454,6 +4677,7 @@ function readInput() {
     if (b) b.addEventListener('click', e => { fn(); e.currentTarget.blur(); });
   };
   tap('tyreBtn', () => { S.nextTyre = (S.nextTyre + 1) % COMPOUNDS.length; });
+  tap('drsBtn', () => { TOUCH.drs = !TOUCH.drs; });
   tap('resetTouchBtn', () => { resetCar(); camSnap = true; });
 
   /* ---- tilt steering ---------------------------------------------------
@@ -4667,7 +4891,7 @@ function step(dt) {
   if (input.thr) {
     drive = Math.min(
       T.maxTraction,                       // mechanical cap
-      T.power / Math.max(Math.abs(vLong), 8), // power curve
+      T.power * (S.ersOn ? ERS_BOOST : 1) / Math.max(Math.abs(vLong), 8), // power curve, ERS deploying or not
       mu * loadR * T.launchGrip            // what the rears can put down
     ) * input.thr;                         // pedal travel: 1 on a key, partial on the touch pedal
     // traction control: ease off once the rear is genuinely sliding
@@ -4682,7 +4906,7 @@ function step(dt) {
     Fx -= ((vLong > 0.5) ? maxBrake : T.reverseForce) * input.brk;   // rolls backwards once stopped
   }
   Fx -= Math.sign(vLong) * T.rollDrag;
-  Fx -= T.dragCoef * vLong * Math.abs(vLong);
+  Fx -= T.dragCoef * (S.drsOpen ? DRS_DRAG : 1) * vLong * Math.abs(vLong);   // the open wing costs less drag
   // gravity along the slope: the climb to Casino costs you, the drop to
   // Portier pays you back, and it makes downhill braking zones genuinely longer
   {
@@ -4851,7 +5075,8 @@ const warnEl   = document.getElementById('warn');
 const flashEl  = document.getElementById('flash');
 
 const MIN_LAP = TRACK_DATA ? TRACK_DATA.minLap : 40000;        // ms — no real lap of this track is anywhere near this quick
-const T_ = { lapStart: 0, now: 0, best: null, last: null, laps: 0, prevS: 0, armed: false };
+const T_ = { lapStart: 0, now: 0, best: null, last: null, laps: 0, prevS: 0, armed: false,
+             split: [], curve: [], ref: null, secIdx: 0, sec: [null, null, null], bestSec: [null, null, null], secCol: ['', '', ''] };
 // Best lap, kept per circuit in this browser (only clean, counted laps get here).
 const BEST_KEY = 'apexgp.best.' + GP_ID;
 const loadBest = () => { try { const v = +localStorage.getItem(BEST_KEY); return v > 0 ? v : null; } catch (e) { return null; } };
@@ -4887,6 +5112,14 @@ function cutCheck(loc) {
 
 function updateTiming(loc) {
   const s = loc.s;
+  {
+    // Three sectors, and a time-at-distance trace of the lap so the delta to
+    // your best is a like-for-like comparison.
+    const el = T_.now - T_.lapStart, seg = Math.min(2, Math.floor(s / trackLength * 3));
+    if (seg > T_.secIdx) { T_.split[T_.secIdx] = el; T_.secIdx = seg; }
+    const bin = Math.floor(s / 100);
+    if (T_.curve[bin] === undefined) T_.curve[bin] = el;
+  }
   // crossing the line: progress wraps from near-full to near-zero, going forwards
   if (T_.prevS < trackLength * 0.25 && s > trackLength * 0.75) T_.armed = false;   // reversed over the line
   if (T_.prevS > trackLength * 0.75 && s < trackLength * 0.25) {      // crossed the line
@@ -4895,6 +5128,16 @@ function updateTiming(loc) {
     // near-instant is the car re-crossing the line, never a real lap.
     if (T_.armed && lap > MIN_LAP && !T_.cutLap) {
       T_.last = lap;
+      {                                          // sector times, coloured as on a timing screen
+        const sec = [T_.split[0] || 0, (T_.split[1] || 0) - (T_.split[0] || 0), lap - (T_.split[1] || 0)];
+        for (let k = 0; k < 3; k++) {
+          const prev = T_.sec[k], best = T_.bestSec[k];
+          T_.secCol[k] = best == null || sec[k] < best ? 'p' : prev != null && sec[k] < prev ? 'g' : 'y';
+          if (best == null || sec[k] < best) T_.bestSec[k] = sec[k];
+          T_.sec[k] = sec[k];
+        }
+      }
+      if (T_.best == null || lap < T_.best) T_.ref = T_.curve;   // the lap the delta is measured against
       if (T_.best == null || lap < T_.best) {
         T_.best = lap; saveBest(lap);
         flashEl.animate([{ opacity: 0.9 }, { opacity: 0 }], { duration: 700, easing: 'ease-out' });
@@ -4904,6 +5147,7 @@ function updateTiming(loc) {
     T_.lapStart = T_.now;       // first crossing out of the grid just starts lap 1
     T_.armed = false;
     T_.cutLap = false;
+    T_.split = []; T_.curve = []; T_.secIdx = 0;
   }
   // Arming only mid-lap is what keeps the short run from the grid to the line
   // out of the times — on the grid the car already sits past 0.9 of a lap.
@@ -4951,30 +5195,59 @@ function audioUpdate(rpmFrac, throttle, slip, speed) {
 }
 
 /* ---------------------------------------------------------------- camera */
-// The cockpit is the only view: the eye sits just above the halo looking down the
-// nose, so the halo arches below screen centre, the front tyres fill the sides
-// and the mirrors sit in the bottom corners. It rides the car, pitching on
-// gradients. (camSnap is still set wherever the car is teleported.)
-let camSnap = true;
+// Three views, as the F1 games offer them: the T-cam above the airbox (what
+// television uses, and the default), the driver's own view from inside the halo,
+// and a chase camera. C cycles them; the HUD stays up in all three.
+const CAM_NAMES = ['T-CAM', 'COCKPIT', 'CHASE'];
+let camMode = 0, camSnap = true, camYaw = 0, lastCamMode = -1;
+const CHASE = { dist: 8.6, height: 3.2, lookAhead: 13.0, lookHeight: 1.05, fov: 60, fovGain: 0.13, yawSmooth: 0.0022 };
 const wob = (t, f) => Math.sin(t * f) * 0.6 + Math.sin(t * f * 1.73 + 1.3) * 0.4;  // smooth, not per-frame random
 const tmp = new THREE.Vector3();
-document.body.classList.add('cockpit');
 
 function updateCamera(dt, speed) {
   const K = TUNE.cockpit;
-  camSnap = false;
   car.updateMatrixWorld(true);
-  const eye = car.localToWorld(new THREE.Vector3(K.x, K.y, 0));
-  const look = car.localToWorld(new THREE.Vector3(
-    K.x + 20, K.y - 20 * Math.tan(K.pitchDown * Math.PI / 180), 0));
-  const buzz = Math.min(speed, 90) / 90 * K.vibration;
-  camera.position.set(eye.x, eye.y + wob(T_.now, 0.09) * buzz * 0.5, eye.z);
   camera.up.set(0, 1, 0);
-  camera.lookAt(look);
-  // hold the horizontal FOV so a tall or wide window frames the halo the same
-  camera.fov = Math.min(100, 2 * Math.atan(Math.tan(K.hfov * Math.PI / 360) / camera.aspect) * 180 / Math.PI);
+  if (camMode === 2) {
+    // Chase: pinned to the car, only the heading lags, so it swings through a
+    // corner without drifting further back the faster you go.
+    if (camSnap) { camYaw = RP.yaw; camSnap = false; }
+    let dy = RP.yaw - camYaw;
+    while (dy > Math.PI) dy -= Math.PI * 2;
+    while (dy < -Math.PI) dy += Math.PI * 2;
+    camYaw += dy * (1 - Math.pow(CHASE.yawSmooth, dt));
+    const ccs = Math.cos(camYaw), csn = Math.sin(camYaw), carY = surfaceY(RP.x, RP.z);
+    const aheadY = path[(S.seg + 10) % SAMPLES].pos.y;
+    camera.position.set(RP.x - ccs * CHASE.dist, carY + CHASE.height, RP.z - csn * CHASE.dist);
+    camera.lookAt(RP.x + ccs * CHASE.lookAhead, aheadY + CHASE.lookHeight, RP.z + csn * CHASE.lookAhead);
+    camera.fov = CHASE.fov + Math.min(speed, 95) * CHASE.fovGain;
+  } else if (camMode === 0) {
+    // T-cam: on the airbox behind the driver's head, looking down the nose. It
+    // rides the car, so it rolls and pitches with it.
+    camSnap = true;
+    const buzz = Math.min(speed, 90) / 90 * K.vibration;
+    const eye = car.localToWorld(new THREE.Vector3(-0.62, 1.58, 0));
+    const look = car.localToWorld(new THREE.Vector3(26, 0.42, 0));
+    camera.position.set(eye.x, eye.y + wob(T_.now, 0.09) * buzz * 0.35, eye.z);
+    camera.lookAt(look);
+    camera.fov = 52 + Math.min(speed, 95) * 0.09;
+  } else {
+    camSnap = true;
+    const eye = car.localToWorld(new THREE.Vector3(K.x, K.y, 0));
+    const look = car.localToWorld(new THREE.Vector3(
+      K.x + 20, K.y - 20 * Math.tan(K.pitchDown * Math.PI / 180), 0));
+    const buzz = Math.min(speed, 90) / 90 * K.vibration;
+    camera.position.set(eye.x, eye.y + wob(T_.now, 0.09) * buzz * 0.5, eye.z);
+    camera.lookAt(look);
+    // hold the horizontal FOV so a tall or wide window frames the halo the same
+    camera.fov = Math.min(100, 2 * Math.atan(Math.tan(K.hfov * Math.PI / 360) / camera.aspect) * 180 / Math.PI);
+  }
   camera.updateProjectionMatrix();
-  if (HALO_DISP && !HALO_DISP.mesh.visible) HALO_DISP.mesh.visible = true;
+  if (camMode !== lastCamMode) {
+    document.body.classList.toggle('cockpit', camMode === 1);
+    if (HALO_DISP) HALO_DISP.mesh.visible = camMode === 1;
+    lastCamMode = camMode;
+  }
 
   const sy = surfaceY(S.x, S.z);
   sun.position.set(S.x + SUN_OFF[0], sy + SUN_OFF[1], S.z + SUN_OFF[2]);
@@ -4985,8 +5258,18 @@ function updateCamera(dt, speed) {
 /* -------------------------------------------------------------------- HUD */
 const speedEl = document.getElementById('speed');
 const gearEl  = document.getElementById('gear');
-const revEl   = document.getElementById('rev');
-const revWrap = document.getElementById('revwrap');
+const drsEl   = document.getElementById('drs');
+const ersEl   = document.getElementById('ers'), ersBarEl = ersEl.querySelector('b');
+const deltaEl = document.getElementById('delta');
+const sectorEls = [...document.querySelectorAll('#sectors i')];
+// Rev lights, as across the top of a steering wheel: green, then red, then blue
+// at the shift point, and the whole strip flashing when you are on the limiter.
+const revLightsEl = document.getElementById('revlights');
+for (let k = 0; k < 15; k++) {
+  const i = document.createElement('i');
+  i.className = k < 5 ? 'g' : k < 10 ? 'r' : 'b';
+  revLightsEl.appendChild(i);
+}
 const thrEl   = document.querySelector('#thr i');
 const brkEl   = document.querySelector('#brk i');
 
@@ -5078,9 +5361,13 @@ const drawMinimap = (() => {
   };
 })();
 
+let HINT_GONE = false;
+const hintEl = document.getElementById('hint');
 function updateHUD(vLong) {
   const kmh = Math.abs(vLong) * 3.6;
-  speedEl.innerHTML = Math.round(kmh) + '<small>KM/H</small>';
+  speedEl.textContent = Math.round(kmh);
+  // the key list is a reminder for the first few corners, not permanent furniture
+  if (!HINT_GONE && kmh > 40) { HINT_GONE = true; hintEl.classList.add('gone'); }
 
   let g = 'N', rpm = 0;
   if (vLong < -0.6) { g = 'R'; rpm = Math.min(1, Math.abs(vLong) / 12); }
@@ -5101,12 +5388,30 @@ function updateHUD(vLong) {
     tyreNextEl.textContent = 'NEXT ' + COMPOUNDS[S.nextTyre].name + ' · T';
     let msg = '';
     if (S.pit === 'service') msg = 'PIT STOP  ' + Math.max(0, S.pitT).toFixed(1) + 's  →  ' + COMPOUNDS[S.nextTyre].name;
-    else if (S.inLane) msg = 'PIT LANE  ·  80 KM/H';
+    else if (S.inLane) msg = 'PIT LANE  ·  ' + Math.round(PIT.limit * 3.6) + ' KM/H';
     if (performance.now() < pitFlashUntil) msg = pitFlashText;
     pitMsgEl.textContent = msg; pitMsgEl.classList.toggle('on', !!msg);
   }
-  revEl.style.width = (rpm * 100).toFixed(1) + '%';
-  revWrap.classList.toggle('limit', rpm > 0.965);
+  {                                                     // rev lights
+    const lit = Math.round(clamp((rpm - 0.45) / 0.52, 0, 1) * 15);
+    for (let k = 0; k < 15; k++) revLightsEl.children[k].classList.toggle('on', k < lit);
+    revLightsEl.classList.toggle('flash', rpm > 0.965 && (T_.now % 160 < 80));
+  }
+  {                                                     // DRS and ERS
+    drsEl.className = S.drsOpen ? 'open' : S.drsAvail ? 'ready' : '';
+    ersBarEl.style.width = (S.ers * 100).toFixed(0) + '%';
+    ersEl.classList.toggle('deploy', S.ersOn);
+  }
+  {                                                     // sector times and the delta to your best lap
+    for (let k = 0; k < 3; k++) sectorEls[k].className = T_.secCol[k] || '';
+    const el = T_.now - T_.lapStart, bin = Math.floor(path[S.seg].s / 100);
+    const ref = T_.ref && T_.ref[bin];
+    if (ref != null && RACE.phase === 'racing' && !PLAYER_CAR.done) {
+      const dl = (el - ref) / 1000;
+      deltaEl.textContent = (dl >= 0 ? '+' : '') + dl.toFixed(2);
+      deltaEl.className = dl >= 0 ? 'up' : 'dn';
+    } else { deltaEl.textContent = ''; deltaEl.className = ''; }
+  }
 
   thrEl.style.height = (input.thr * 100) + '%';
   brkEl.style.height = (input.brk * 100) + '%';
@@ -5224,8 +5529,15 @@ function frame(now) {
   const vLong = S.vx * Math.cos(S.yaw) + S.vz * Math.sin(S.yaw);
   updateCamera(dt, speed);
   const rpm = updateHUD(vLong);
+  {
+    // tyre bands show the compound, and the discs glow under braking
+    MAT.band.color.set(COMPOUNDS[S.tyre].color).convertSRGBToLinear();
+    const heat = Math.min(1, input.brk * Math.min(1, speed / 45));
+    MAT.brake.color.setRGB(0.10 + heat * 0.90, 0.07 + heat * 0.26, 0.05 + heat * 0.05);
+    for (const r of RIVALS) if (r.bandMat) r.bandMat.color.set(COMPOUNDS[r.tyre].color).convertSRGBToLinear();
+  }
   if (STEER_WHEEL) STEER_WHEEL.rotation.x = S.steer * 3.2;
-  drawHaloDisplay();
+  if (camMode === 1) drawHaloDisplay();
   drawMinimap();
   updateRaceHUD();
   updateCrew(dt);
